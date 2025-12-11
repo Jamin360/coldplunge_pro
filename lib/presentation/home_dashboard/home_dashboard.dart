@@ -198,7 +198,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                     ),
                     _buildDetailRow(
                       'Duration',
-                      '${session['duration']} minutes',
+                      '${session['duration']} seconds',
                     ),
                     _buildDetailRow(
                       'Temperature',
@@ -457,7 +457,7 @@ class _HomeDashboardState extends State<HomeDashboard>
           child: _isLoading
               ? _buildLoadingState()
               : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Hero Section with Streak Counter
                     Container(
@@ -486,9 +486,11 @@ class _HomeDashboardState extends State<HomeDashboard>
 
                     // Quick Stats Cards
                     Container(
+                      width: double.infinity,
                       height: 20.h,
                       padding: EdgeInsets.symmetric(horizontal: 4.w),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Expanded(
                             child: QuickStatsCardWidget(
@@ -517,18 +519,19 @@ class _HomeDashboardState extends State<HomeDashboard>
                     SizedBox(height: 3.h),
 
                     // Weekly Progress Chart
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
-                      child: WeeklyProgressChartWidget(
-                        weeklyData: _weeklyData,
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4.w),
+                        child: WeeklyProgressChartWidget(
+                          weeklyData: _weeklyData,
+                        ),
                       ),
                     ),
 
                     SizedBox(height: 3.h),
 
                     // Weather Widget (now handles its own data)
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
+                    Center(
                       child: const WeatherWidget(),
                     ),
 
@@ -536,8 +539,7 @@ class _HomeDashboardState extends State<HomeDashboard>
 
                     // Community Highlights
                     if (_communityHighlights.isNotEmpty) ...[
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4.w),
+                      Center(
                         child: CommunityHighlightsWidget(
                           highlights: _communityHighlights,
                         ),
@@ -546,62 +548,66 @@ class _HomeDashboardState extends State<HomeDashboard>
                     ],
 
                     // Recent Sessions
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4.w),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Recent Sessions',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
+                    Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4.w),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Recent Sessions',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              '/personal-analytics',
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'View All',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.w500,
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                '/personal-analytics',
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'View All',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                                SizedBox(width: 1.w),
-                                CustomIconWidget(
-                                  iconName: 'arrow_forward_ios',
-                                  color: colorScheme.primary,
-                                  size: 12,
-                                ),
-                              ],
+                                  SizedBox(width: 1.w),
+                                  CustomIconWidget(
+                                    iconName: 'arrow_forward_ios',
+                                    color: colorScheme.primary,
+                                    size: 12,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
 
                     SizedBox(height: 2.h),
 
                     // Recent Sessions List
-                    _recentSessions.isEmpty
-                        ? _buildEmptySessionsState()
-                        : Column(
-                            children: _recentSessions.map((session) {
-                              return RecentSessionCardWidget(
-                                session: session,
-                                onView: () => _viewSessionDetails(session),
-                                onShare: () => _shareSession(session),
-                                onEdit: () => _editSession(session),
-                                onDelete: () => _deleteSession(session),
-                              );
-                            }).toList(),
-                          ),
+                    Center(
+                      child: _recentSessions.isEmpty
+                          ? _buildEmptySessionsState()
+                          : Column(
+                              children: _recentSessions.map((session) {
+                                return RecentSessionCardWidget(
+                                  session: session,
+                                  onView: () => _viewSessionDetails(session),
+                                  onShare: () => _shareSession(session),
+                                  onEdit: () => _editSession(session),
+                                  onDelete: () => _deleteSession(session),
+                                );
+                              }).toList(),
+                            ),
+                    ),
 
                     SizedBox(height: 10.h), // Bottom padding for FAB
                   ],

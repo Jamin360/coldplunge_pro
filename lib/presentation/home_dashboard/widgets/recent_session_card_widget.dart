@@ -118,8 +118,11 @@ class RecentSessionCardWidget extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                _formatDate(DateTime.parse(
-                                    session['created_at'] as String)),
+                                _formatDate(
+                                  DateTime.parse(
+                                    session['created_at'] as String,
+                                  ),
+                                ),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w400,
@@ -133,15 +136,19 @@ class RecentSessionCardWidget extends StatelessWidget {
                   ),
                   if (session['post_mood'] != null)
                     Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 2.w,
+                        vertical: 1.h,
+                      ),
                       decoration: BoxDecoration(
-                        color: _getMoodColor(session['post_mood'] as String)
-                            .withValues(alpha: 0.1),
+                        color: _getMoodColor(
+                          session['post_mood'] as String,
+                        ).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: _getMoodColor(session['post_mood'] as String)
-                              .withValues(alpha: 0.3),
+                          color: _getMoodColor(
+                            session['post_mood'] as String,
+                          ).withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
@@ -162,7 +169,7 @@ class RecentSessionCardWidget extends StatelessWidget {
                     child: _buildStatItem(
                       context,
                       'Duration',
-                      '${session['duration'] ?? 0} min',
+                      '${session['duration'] ?? 0}s',
                       'timer',
                     ),
                   ),
@@ -179,19 +186,6 @@ class RecentSessionCardWidget extends StatelessWidget {
                       'thermostat',
                     ),
                   ),
-                  Container(
-                    width: 1,
-                    height: 4.h,
-                    color: colorScheme.outline.withValues(alpha: 0.2),
-                  ),
-                  Expanded(
-                    child: _buildStatItem(
-                      context,
-                      'Rating',
-                      '${session['rating'] ?? 0}/5',
-                      'star',
-                    ),
-                  ),
                 ],
               ),
               if (session['notes'] != null &&
@@ -201,8 +195,9 @@ class RecentSessionCardWidget extends StatelessWidget {
                   width: double.infinity,
                   padding: EdgeInsets.all(3.w),
                   decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.3),
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.3,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -224,7 +219,11 @@ class RecentSessionCardWidget extends StatelessWidget {
   }
 
   Widget _buildStatItem(
-      BuildContext context, String label, String value, String iconName) {
+    BuildContext context,
+    String label,
+    String value,
+    String iconName,
+  ) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -295,7 +294,9 @@ class RecentSessionCardWidget extends StatelessWidget {
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -305,10 +306,9 @@ class RecentSessionCardWidget extends StatelessWidget {
               height: 0.5.h,
               margin: EdgeInsets.symmetric(vertical: 2.h),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .outline
-                    .withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

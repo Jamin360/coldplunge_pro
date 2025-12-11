@@ -16,69 +16,72 @@ class CommunityHighlightsWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.1),
+            width: 1,
           ),
-        ],
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.1),
-          width: 1,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Community Highlights',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Community Highlights',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/community-feed'),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'View All',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w500,
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/community-feed'),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View All',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 1.w),
-                    CustomIconWidget(
-                      iconName: 'arrow_forward_ios',
-                      color: colorScheme.primary,
-                      size: 12,
-                    ),
-                  ],
+                      SizedBox(width: 1.w),
+                      CustomIconWidget(
+                        iconName: 'arrow_forward_ios',
+                        color: colorScheme.primary,
+                        size: 12,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 3.h),
-          highlights.isEmpty
-              ? _buildEmptyState(context)
-              : Column(
-                  children: highlights.take(3).map((highlight) {
-                    return _buildHighlightItem(context, highlight);
-                  }).toList(),
-                ),
-        ],
+              ],
+            ),
+            SizedBox(height: 3.h),
+            highlights.isEmpty
+                ? _buildEmptyState(context)
+                : Column(
+                    children: highlights.take(3).map((highlight) {
+                      return _buildHighlightItem(context, highlight);
+                    }).toList(),
+                  ),
+          ],
+        ),
       ),
     );
   }

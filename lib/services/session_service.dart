@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-
 class SessionService {
   static SessionService? _instance;
   static SessionService get instance => _instance ??= SessionService._();
@@ -20,7 +19,6 @@ class SessionService {
     required String location,
     required int duration,
     required int temperature,
-    int? rating,
     String? preMood,
     String? postMood,
     String? notes,
@@ -37,8 +35,6 @@ class SessionService {
         'location': location,
         'duration': duration,
         'temperature': temperature,
-        'rating': rating,
-        // Remove explicit enum casting - Supabase client handles type conversion
         'pre_mood': preMood,
         'post_mood': postMood,
         'notes': notes,
@@ -81,14 +77,11 @@ class SessionService {
     _pendingSaves[sessionKey] = completer;
 
     try {
-      // Pre-compute optimized data payload - direct mapping with correct field names
       final optimizedData = <String, dynamic>{
         'user_id': currentUser.id,
         'location': sessionData['location'],
         'duration': sessionData['duration'],
         'temperature': sessionData['temperature'],
-        'rating': sessionData['rating'],
-        // Fixed: Direct mapping since PlungeTimer now sends correct field names
         'pre_mood': sessionData['pre_mood'],
         'post_mood': sessionData['post_mood'],
         'notes':
@@ -195,8 +188,6 @@ class SessionService {
         'location': sessionData['location'],
         'duration': sessionData['duration'],
         'temperature': sessionData['temperature'],
-        'rating': sessionData['rating'],
-        // Fixed: Direct mapping since PlungeTimer now sends correct field names
         'pre_mood': sessionData['pre_mood'],
         'post_mood': sessionData['post_mood'],
         'notes':
@@ -276,7 +267,6 @@ class SessionService {
     String? location,
     int? duration,
     int? temperature,
-    int? rating,
     String? preMood,
     String? postMood,
     String? notes,
@@ -295,8 +285,6 @@ class SessionService {
       if (location != null) updates['location'] = location;
       if (duration != null) updates['duration'] = duration;
       if (temperature != null) updates['temperature'] = temperature;
-      if (rating != null) updates['rating'] = rating;
-      // Remove explicit enum casting - Supabase client handles type conversion
       if (preMood != null) updates['pre_mood'] = preMood;
       if (postMood != null) updates['post_mood'] = postMood;
       if (notes != null) updates['notes'] = notes;
@@ -339,7 +327,7 @@ class SessionService {
   /// Get recent sessions (last 5)
   Future<List<Map<String, dynamic>>> getRecentSessions() async {
     return await getUserSessions(
-      limit: 5,
+      limit: 10,
       orderBy: 'created_at',
       ascending: false,
     );

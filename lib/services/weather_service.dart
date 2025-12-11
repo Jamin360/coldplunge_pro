@@ -112,7 +112,7 @@ class WeatherService {
         if (state.isNotEmpty && city != state) {
           return '$city, $state';
         }
-        return city!;
+        return city;
       }
     } catch (error) {
       print('Error getting location name: $error');

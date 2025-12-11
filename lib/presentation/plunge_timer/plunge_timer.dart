@@ -37,7 +37,6 @@ class _PlungeTimerState extends State<PlungeTimer>
   int _preMood = 3;
   int _postMood = 4;
   String _sessionNotes = '';
-  int _rating = 4;
   String? _breathingTechnique;
 
   // UI state
@@ -287,7 +286,6 @@ class _PlungeTimerState extends State<PlungeTimer>
         'location': _location,
         'duration': _sessionDuration.inSeconds,
         'temperature': _temperature.round(),
-        'rating': _rating,
         'pre_mood': preMoodString, // Fixed: Use snake_case to match database
         'post_mood': postMoodString, // Fixed: Use snake_case to match database
         'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
@@ -329,7 +327,6 @@ class _PlungeTimerState extends State<PlungeTimer>
         'location': _location,
         'duration': _sessionDuration.inSeconds,
         'temperature': _temperature.round(),
-        'rating': _rating,
         'pre_mood': preMoodString, // Fixed: Use snake_case to match database
         'post_mood': postMoodString, // Fixed: Use snake_case to match database
         'notes': _sessionNotes.isEmpty ? null : _sessionNotes,

@@ -75,303 +75,312 @@ class _WeatherWidgetState extends State<WeatherWidget> {
       return _buildErrorWidget(theme, colorScheme);
     }
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _getWeatherColor(_weatherData!['condition'] as String)
-                .withValues(alpha: 0.1),
-            _getWeatherColor(_weatherData!['condition'] as String)
-                .withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _getWeatherColor(_weatherData!['condition'] as String)
-              .withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Weather Conditions',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CustomIconWidget(
-                    iconName:
-                        _getWeatherIcon(_weatherData!['condition'] as String),
-                    color:
-                        _getWeatherColor(_weatherData!['condition'] as String),
-                    size: 24,
-                  ),
-                  SizedBox(width: 2.w),
-                  GestureDetector(
-                    onTap: _toggleTemperatureUnit,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 2.w, vertical: 0.5.h),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: colorScheme.primary.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        _isFahrenheit ? '°F' : '°C',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 2.w),
-                  GestureDetector(
-                    onTap: _handleRefresh,
-                    child: CustomIconWidget(
-                      iconName: 'refresh',
-                      color: colorScheme.onSurfaceVariant,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              _getWeatherColor(_weatherData!['condition'] as String)
+                  .withValues(alpha: 0.1),
+              _getWeatherColor(_weatherData!['condition'] as String)
+                  .withValues(alpha: 0.05),
             ],
           ),
-          SizedBox(height: 2.h),
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _getWeatherColor(_weatherData!['condition'] as String)
+                .withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Weather Conditions',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '${_convertTemperature(_weatherData!['temperature'] as int).toStringAsFixed(1)}${_getTemperatureUnit()}',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 20.sp,
-                      ),
+                    CustomIconWidget(
+                      iconName:
+                          _getWeatherIcon(_weatherData!['condition'] as String),
+                      color: _getWeatherColor(
+                          _weatherData!['condition'] as String),
+                      size: 24,
                     ),
-                    Text(
-                      _weatherData!['condition'] as String,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(height: 1.h),
-                    Row(
-                      children: [
-                        CustomIconWidget(
-                          iconName: 'location_on',
-                          color: colorScheme.onSurfaceVariant
-                              .withValues(alpha: 0.7),
-                          size: 14,
-                        ),
-                        SizedBox(width: 1.w),
-                        Expanded(
-                          child: Text(
-                            _weatherData!['location'] as String,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant
-                                  .withValues(alpha: 0.7),
-                              fontWeight: FontWeight.w400,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    SizedBox(width: 2.w),
+                    GestureDetector(
+                      onTap: _toggleTemperatureUnit,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 2.w, vertical: 0.5.h),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: colorScheme.primary.withValues(alpha: 0.3),
+                            width: 1,
                           ),
                         ),
-                      ],
+                        child: Text(
+                          _isFahrenheit ? '°F' : '°C',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 2.w),
+                    GestureDetector(
+                      onTap: _handleRefresh,
+                      child: CustomIconWidget(
+                        iconName: 'refresh',
+                        color: colorScheme.onSurfaceVariant,
+                        size: 20,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildWeatherDetail(
-                      context,
-                      'Feels Like',
-                      '${_convertTemperature(_weatherData!['feelsLike'] as int).toStringAsFixed(1)}${_getTemperatureUnit()}',
-                      'thermostat',
-                    ),
-                    SizedBox(height: 1.h),
-                    _buildWeatherDetail(
-                      context,
-                      'Humidity',
-                      '${_weatherData!['humidity']}%',
-                      'water_drop',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 2.h),
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(3.w),
-            decoration: BoxDecoration(
-              color: _getPlungeRecommendationColor(
-                      _weatherData!['temperature'] as int)
-                  .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _getPlungeRecommendationColor(
-                        _weatherData!['temperature'] as int)
-                    .withValues(alpha: 0.3),
-                width: 1,
-              ),
+              ],
             ),
-            child: Row(
+            SizedBox(height: 2.h),
+            Row(
               children: [
-                CustomIconWidget(
-                  iconName: _getPlungeRecommendationIcon(
-                      _weatherData!['temperature'] as int),
-                  color: _getPlungeRecommendationColor(
-                      _weatherData!['temperature'] as int),
-                  size: 16,
-                ),
-                SizedBox(width: 2.w),
                 Expanded(
-                  child: Text(
-                    _getPlungeRecommendation(
-                        _weatherData!['temperature'] as int),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: _getPlungeRecommendationColor(
-                          _weatherData!['temperature'] as int),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${_convertTemperature(_weatherData!['temperature'] as int).toStringAsFixed(1)}${_getTemperatureUnit()}',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20.sp,
+                        ),
+                      ),
+                      Text(
+                        _weatherData!['condition'] as String,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(height: 1.h),
+                      Row(
+                        children: [
+                          CustomIconWidget(
+                            iconName: 'location_on',
+                            color: colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.7),
+                            size: 14,
+                          ),
+                          SizedBox(width: 1.w),
+                          Expanded(
+                            child: Text(
+                              _weatherData!['location'] as String,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
+                                fontWeight: FontWeight.w400,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      _buildWeatherDetail(
+                        context,
+                        'Feels Like',
+                        '${_convertTemperature(_weatherData!['feelsLike'] as int).toStringAsFixed(1)}${_getTemperatureUnit()}',
+                        'thermostat',
+                      ),
+                      SizedBox(height: 1.h),
+                      _buildWeatherDetail(
+                        context,
+                        'Humidity',
+                        '${_weatherData!['humidity']}%',
+                        'water_drop',
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+            SizedBox(height: 2.h),
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(3.w),
+              decoration: BoxDecoration(
+                color: _getPlungeRecommendationColor(
+                        _weatherData!['temperature'] as int)
+                    .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _getPlungeRecommendationColor(
+                          _weatherData!['temperature'] as int)
+                      .withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  CustomIconWidget(
+                    iconName: _getPlungeRecommendationIcon(
+                        _weatherData!['temperature'] as int),
+                    color: _getPlungeRecommendationColor(
+                        _weatherData!['temperature'] as int),
+                    size: 16,
+                  ),
+                  SizedBox(width: 2.w),
+                  Expanded(
+                    child: Text(
+                      _getPlungeRecommendation(
+                          _weatherData!['temperature'] as int),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: _getPlungeRecommendationColor(
+                            _weatherData!['temperature'] as int),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLoadingWidget(ThemeData theme, ColorScheme colorScheme) {
-    return Container(
-      width: double.infinity,
-      height: 25.h,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: Container(
+        width: double.infinity,
+        height: 25.h,
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              color: colorScheme.primary,
-              strokeWidth: 2,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                color: colorScheme.primary,
+                strokeWidth: 2,
+              ),
             ),
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            'Getting weather data...',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+            SizedBox(height: 2.h),
+            Text(
+              'Getting weather data...',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorWidget(ThemeData theme, ColorScheme colorScheme) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        color: AppTheme.errorLight.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.errorLight.withValues(alpha: 0.3),
-          width: 1,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          color: AppTheme.errorLight.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppTheme.errorLight.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CustomIconWidget(
-                iconName: 'warning',
-                color: AppTheme.errorLight,
-                size: 20,
-              ),
-              SizedBox(width: 2.w),
-              Text(
-                'Weather Unavailable',
-                style: theme.textTheme.titleMedium?.copyWith(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CustomIconWidget(
+                  iconName: 'warning',
                   color: AppTheme.errorLight,
-                  fontWeight: FontWeight.w600,
+                  size: 20,
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 2.h),
-          Text(
-            'Unable to fetch weather data. Check your location settings and internet connection.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+                SizedBox(width: 2.w),
+                Text(
+                  'Weather Unavailable',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppTheme.errorLight,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ),
-          SizedBox(height: 2.h),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _handleRefresh,
-              icon: CustomIconWidget(
-                iconName: 'refresh',
-                color: Colors.white,
-                size: 16,
+            SizedBox(height: 2.h),
+            Text(
+              'Unable to fetch weather data. Check your location settings and internet connection.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
               ),
-              label: Text(
-                'Retry',
-                style: theme.textTheme.bodyMedium?.copyWith(
+            ),
+            SizedBox(height: 2.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _handleRefresh,
+                icon: CustomIconWidget(
+                  iconName: 'refresh',
                   color: Colors.white,
-                  fontWeight: FontWeight.w500,
+                  size: 16,
                 ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.primary,
-                padding: EdgeInsets.symmetric(vertical: 1.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                label: Text(
+                  'Retry',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colorScheme.primary,
+                  padding: EdgeInsets.symmetric(vertical: 1.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

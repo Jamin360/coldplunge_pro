@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../../widgets/custom_icon_widget.dart';
-import '../../../widgets/custom_image_widget.dart';
 
 class PostCardWidget extends StatefulWidget {
   final Map<String, dynamic> post;
