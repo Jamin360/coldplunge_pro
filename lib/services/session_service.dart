@@ -42,12 +42,11 @@ class SessionService {
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      final response =
-          await _client
-              .from('plunge_sessions')
-              .insert(sessionData)
-              .select()
-              .single();
+      final response = await _client
+          .from('plunge_sessions')
+          .insert(sessionData)
+          .select()
+          .single();
 
       return response;
     } catch (error) {
@@ -150,18 +149,18 @@ class SessionService {
 
     try {
       // Add user_id and timestamp efficiently
-      final optimizedData = Map<String, dynamic>.from(sessionData)..addAll({
-        'user_id': currentUser.id,
-        'created_at': DateTime.now().toIso8601String(),
-      });
+      final optimizedData = Map<String, dynamic>.from(sessionData)
+        ..addAll({
+          'user_id': currentUser.id,
+          'created_at': DateTime.now().toIso8601String(),
+        });
 
       // Single database call with minimal response data
-      final response =
-          await _client
-              .from('plunge_sessions')
-              .insert(optimizedData)
-              .select('id, created_at') // Only get essential fields back
-              .single();
+      final response = await _client
+          .from('plunge_sessions')
+          .insert(optimizedData)
+          .select('id, created_at') // Only get essential fields back
+          .single();
 
       return response;
     } catch (error) {
@@ -207,6 +206,40 @@ class SessionService {
     }
   }
 
+  /// Save a new plunge session
+  Future<void> saveSession({
+    required int duration,
+    double? temperature,
+    String? moodBefore,
+    String? moodAfter,
+    String? notes,
+    String? location,
+    String? photoUrl,
+    String? photoPath,
+  }) async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      await _client.from('plunge_sessions').insert({
+        'user_id': userId,
+        'duration': duration,
+        'temperature': temperature,
+        'mood_before': moodBefore,
+        'mood_after': moodAfter,
+        'notes': notes,
+        'location': location,
+        'photo_url': photoUrl,
+        'photo_path': photoPath,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      throw Exception('Failed to save session: $e');
+    }
+  }
+
   /// Get user's sessions with optional filtering
   Future<List<Map<String, dynamic>>> getUserSessions({
     int? limit,
@@ -235,9 +268,8 @@ class SessionService {
       }
 
       // Apply ordering and limit
-      final response = await query
-          .order(orderBy!, ascending: ascending)
-          .limit(limit ?? 100);
+      final response =
+          await query.order(orderBy!, ascending: ascending).limit(limit ?? 100);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (error) {
@@ -248,12 +280,11 @@ class SessionService {
   /// Get session by ID
   Future<Map<String, dynamic>> getSessionById(String sessionId) async {
     try {
-      final response =
-          await _client
-              .from('plunge_sessions')
-              .select()
-              .eq('id', sessionId)
-              .single();
+      final response = await _client
+          .from('plunge_sessions')
+          .select()
+          .eq('id', sessionId)
+          .single();
 
       return response;
     } catch (error) {
@@ -291,14 +322,13 @@ class SessionService {
       if (breathingTechnique != null)
         updates['breathing_technique'] = breathingTechnique;
 
-      final response =
-          await _client
-              .from('plunge_sessions')
-              .update(updates)
-              .eq('id', sessionId)
-              .eq('user_id', currentUser.id)
-              .select()
-              .single();
+      final response = await _client
+          .from('plunge_sessions')
+          .update(updates)
+          .eq('id', sessionId)
+          .eq('user_id', currentUser.id)
+          .select()
+          .single();
 
       return response;
     } catch (error) {
@@ -361,12 +391,10 @@ class SessionService {
         final dayStart = DateTime(day.year, day.month, day.day);
         final dayEnd = dayStart.add(const Duration(days: 1));
 
-        final daySessions =
-            sessions.where((session) {
-              final sessionDate = DateTime.parse(session['created_at']);
-              return sessionDate.isAfter(dayStart) &&
-                  sessionDate.isBefore(dayEnd);
-            }).toList();
+        final daySessions = sessions.where((session) {
+          final sessionDate = DateTime.parse(session['created_at']);
+          return sessionDate.isAfter(dayStart) && sessionDate.isBefore(dayEnd);
+        }).toList();
 
         final totalDuration = daySessions.fold<int>(
           0,
@@ -417,25 +445,22 @@ class SessionService {
         (sum, s) => sum + (s['duration'] as int? ?? 0),
       );
       final avgDuration = totalDuration / totalSessions;
-      final avgTemperature =
-          sessions.fold<int>(
+      final avgTemperature = sessions.fold<int>(
             0,
             (sum, s) => sum + (s['temperature'] as int? ?? 0),
           ) /
           totalSessions;
       final personalBest = sessions.fold<int>(
         0,
-        (max, s) =>
-            (s['duration'] as int? ?? 0) > max
-                ? (s['duration'] as int? ?? 0)
-                : max,
+        (max, s) => (s['duration'] as int? ?? 0) > max
+            ? (s['duration'] as int? ?? 0)
+            : max,
       );
       final coldestPlunge = sessions.fold<int>(
         100,
-        (min, s) =>
-            (s['temperature'] as int? ?? 100) < min
-                ? (s['temperature'] as int? ?? 100)
-                : min,
+        (min, s) => (s['temperature'] as int? ?? 100) < min
+            ? (s['temperature'] as int? ?? 100)
+            : min,
       );
 
       // Find favorite location
@@ -444,10 +469,9 @@ class SessionService {
         final location = session['location'] as String? ?? 'Unknown';
         locationCounts[location] = (locationCounts[location] ?? 0) + 1;
       }
-      final favoriteLocation =
-          locationCounts.entries
-              .reduce((a, b) => a.value > b.value ? a : b)
-              .key;
+      final favoriteLocation = locationCounts.entries
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key;
 
       // Find most common post mood
       final moodCounts = <String, int>{};
@@ -457,12 +481,9 @@ class SessionService {
           moodCounts[mood] = (moodCounts[mood] ?? 0) + 1;
         }
       }
-      final mostCommonMood =
-          moodCounts.isNotEmpty
-              ? moodCounts.entries
-                  .reduce((a, b) => a.value > b.value ? a : b)
-                  .key
-              : 'N/A';
+      final mostCommonMood = moodCounts.isNotEmpty
+          ? moodCounts.entries.reduce((a, b) => a.value > b.value ? a : b).key
+          : 'N/A';
 
       return {
         'total_sessions': totalSessions,

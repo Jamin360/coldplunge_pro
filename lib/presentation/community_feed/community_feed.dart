@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/community_service.dart';
 import '../../widgets/custom_bottom_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/comment_bottom_sheet_widget.dart';
@@ -23,98 +24,15 @@ class _CommunityFeedState extends State<CommunityFeed>
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   bool _isRefreshing = false;
+  bool _isLoading = true;
   int _currentBottomNavIndex = 2; // Community tab
 
   late AnimationController _refreshAnimationController;
   late Animation<double> _refreshAnimation;
 
-  // Mock data for community feed
-  final List<Map<String, dynamic>> _posts = [
-    {
-      "id": 1,
-      "userName": "Alex Thompson",
-      "userAvatar":
-          "https://images.unsplash.com/photo-1671723131667-8c3686fd17e5",
-      "userAvatarSemanticLabel": "Man with beard wearing blue shirt outdoors",
-      "timeAgo": "2h ago",
-      "duration": "5:30",
-      "temperature": "38°F",
-      "caption":
-          "Morning plunge at Lake Tahoe! The mental clarity after this session was incredible. Nothing beats starting the day with a challenge that pushes your limits. 💪❄️",
-      "location": "Lake Tahoe, CA",
-      "sessionImage":
-          "https://images.unsplash.com/photo-1663991891292-aa61ef97e718",
-      "sessionImageSemanticLabel":
-          "Person in cold water lake surrounded by snow-covered mountains during sunrise",
-      "likesCount": 127,
-      "commentsCount": 23,
-      "isLiked": false,
-    },
-    {
-      "id": 2,
-      "userName": "Sarah Chen",
-      "userAvatar":
-          "https://images.unsplash.com/photo-1733875332103-d05a6beaa6b4",
-      "userAvatarSemanticLabel":
-          "Asian woman with long black hair smiling at camera wearing white top",
-      "timeAgo": "4h ago",
-      "duration": "3:45",
-      "temperature": "42°F",
-      "caption":
-          "Week 3 of my cold plunge journey! Still can't believe I'm doing this, but the energy boost is real. Thanks to this amazing community for the motivation! 🙏",
-      "location": "Santa Monica, CA",
-      "sessionImage":
-          "https://images.unsplash.com/photo-1674561613195-ffaafee879cf",
-      "sessionImageSemanticLabel":
-          "Woman in swimsuit entering cold ocean water with waves in background",
-      "likesCount": 89,
-      "commentsCount": 15,
-      "isLiked": true,
-    },
-    {
-      "id": 3,
-      "userName": "Mike Rodriguez",
-      "userAvatar":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_143aabdcc-1762273570777.png",
-      "userAvatarSemanticLabel":
-          "Hispanic man with glasses wearing dark sweater in professional setting",
-      "timeAgo": "6h ago",
-      "duration": "7:15",
-      "temperature": "35°F",
-      "caption":
-          "New personal record! 7 minutes and 15 seconds in 35°F water. The Wim Hof breathing technique really makes a difference. Who's ready for tomorrow's group session?",
-      "location": "Central Park, NY",
-      "sessionImage":
-          "https://images.unsplash.com/photo-1675926018965-20620ec5f436",
-      "sessionImageSemanticLabel":
-          "Ice bath setup in snowy park with steam rising from cold water",
-      "likesCount": 156,
-      "commentsCount": 31,
-      "isLiked": false,
-    },
-    {
-      "id": 4,
-      "userName": "Emma Wilson",
-      "userAvatar":
-          "https://images.unsplash.com/photo-1511373800525-05da6d924ef2",
-      "userAvatarSemanticLabel":
-          "Blonde woman in casual clothing smiling in natural lighting",
-      "timeAgo": "8h ago",
-      "duration": "4:20",
-      "temperature": "40°F",
-      "caption":
-          "Recovery day plunge after yesterday's marathon training. The inflammation reduction is noticeable! My legs feel so much better. 🏃‍♀️❄️",
-      "location": "Boulder, CO",
-      "sessionImage":
-          "https://images.unsplash.com/photo-1684346819395-d262db722276",
-      "sessionImageSemanticLabel":
-          "Athletic woman in cold mountain stream with rocky surroundings",
-      "likesCount": 94,
-      "commentsCount": 18,
-      "isLiked": true,
-    },
-  ];
+  List<Map<String, dynamic>> _posts = [];
 
+  // Mock data for community feed
   final List<Map<String, dynamic>> _highlights = [
     {
       "id": 1,
@@ -130,8 +48,7 @@ class _CommunityFeedState extends State<CommunityFeed>
       "title": "Wim Hof Method",
       "type": "highlight",
       "isActive": false,
-      "image":
-          "https://images.unsplash.com/photo-1645389413935-0376a9e6676a",
+      "image": "https://images.unsplash.com/photo-1645389413935-0376a9e6676a",
       "imageSemanticLabel":
           "Man practicing breathing exercises in cold environment",
     },
@@ -140,8 +57,7 @@ class _CommunityFeedState extends State<CommunityFeed>
       "title": "Beginner Tips",
       "type": "highlight",
       "isActive": false,
-      "image":
-          "https://images.unsplash.com/photo-1702265500624-13995c5937d8",
+      "image": "https://images.unsplash.com/photo-1702265500624-13995c5937d8",
       "imageSemanticLabel": "Instructional guide for cold plunge beginners",
     },
     {
@@ -149,8 +65,7 @@ class _CommunityFeedState extends State<CommunityFeed>
       "title": "Weekly Goals",
       "type": "challenge",
       "isActive": true,
-      "image":
-          "https://images.unsplash.com/photo-1684089007679-512bec20368d",
+      "image": "https://images.unsplash.com/photo-1684089007679-512bec20368d",
       "imageSemanticLabel": "Weekly challenge tracker with progress indicators",
     },
   ];
@@ -169,6 +84,8 @@ class _CommunityFeedState extends State<CommunityFeed>
       parent: _refreshAnimationController,
       curve: Curves.easeInOut,
     ));
+
+    _loadPosts();
   }
 
   @override
@@ -177,6 +94,38 @@ class _CommunityFeedState extends State<CommunityFeed>
     _searchController.dispose();
     _refreshAnimationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPosts() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      final posts = await CommunityService.instance.getCommunityPosts(
+        limit: 20,
+        offset: 0,
+      );
+
+      if (mounted) {
+        setState(() {
+          _posts = posts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load posts: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _handleRefresh() async {
@@ -189,8 +138,7 @@ class _CommunityFeedState extends State<CommunityFeed>
     HapticFeedback.mediumImpact();
     _refreshAnimationController.forward();
 
-    // Simulate network request
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await _loadPosts();
 
     if (mounted) {
       setState(() {
@@ -206,13 +154,10 @@ class _CommunityFeedState extends State<CommunityFeed>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => CreatePostWidget(
-        onPostCreated: () {
-          // Refresh feed after post creation
-          _handleRefresh();
-        },
-      ),
-    );
+      builder: (context) => const CreatePostWidget(),
+    ).then((_) {
+      _handleRefresh();
+    });
   }
 
   void _showComments(Map<String, dynamic> post) {
@@ -278,21 +223,25 @@ class _CommunityFeedState extends State<CommunityFeed>
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: _buildAppBar(theme, colorScheme),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: colorScheme.primary,
-        backgroundColor: colorScheme.surface,
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            if (_isRefreshing) _buildRefreshIndicator(),
-            if (!_isSearching) _buildHighlightsSection(),
-            _buildPostsList(),
-            _buildBottomPadding(),
-          ],
-        ),
-      ),
+      body: _isLoading
+          ? Center(
+              child: CircularProgressIndicator(color: colorScheme.primary),
+            )
+          : RefreshIndicator(
+              onRefresh: _handleRefresh,
+              color: colorScheme.primary,
+              backgroundColor: colorScheme.surface,
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  if (_isRefreshing) _buildRefreshIndicator(),
+                  if (!_isSearching) _buildHighlightsSection(),
+                  _buildPostsList(),
+                  _buildBottomPadding(),
+                ],
+              ),
+            ),
       floatingActionButton: _buildFloatingActionButton(colorScheme),
       bottomNavigationBar: CustomBottomBar(
         currentIndex: _currentBottomNavIndex,

@@ -4,7 +4,6 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/analytics_service.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/achievements_timeline_widget.dart';
 import './widgets/chart_container_widget.dart';
 import './widgets/export_options_widget.dart';
@@ -33,6 +32,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   Map<String, dynamic> _moodData = {};
   bool _isLoading = true;
   String? _errorMessage;
+  Map<String, dynamic> _userStats = {};
 
   // Static achievements data (can be moved to database later)
   final List<Map<String, dynamic>> _achievements = [
@@ -120,16 +120,15 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   List<Map<String, dynamic>> _buildKeyMetricsFromData(
     Map<String, dynamic> metrics,
   ) {
+    // Extract real session count from Supabase user_profiles.total_sessions
     final totalSessions = metrics['totalSessions'] ?? 0;
     final currentStreak = metrics['currentStreak'] ?? 0;
     final avgDuration = metrics['avgDuration'] ?? 0.0;
     final coldestTemp = metrics['coldestTemp'];
 
-    // Format average duration
-    final avgMinutes = (avgDuration / 60).floor();
-    final avgSeconds = (avgDuration % 60).floor();
-    final avgDurationStr =
-        '${avgMinutes}:${avgSeconds.toString().padLeft(2, '0')}';
+    // Format average duration as seconds (rounded to integer)
+    final avgDurationSeconds = avgDuration.round();
+    final avgDurationStr = _formatDuration(avgDurationSeconds);
 
     // Format temperature
     String tempStr = 'N/A';
@@ -138,10 +137,14 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
       tempStr = '${fahrenheit}°F';
     }
 
+    // Get personal best duration from metrics (longest plunge)
+    final personalBestDuration = (metrics['personalBestDuration'] ?? 0) as int;
+    final personalBestStr = _formatDuration(personalBestDuration);
+
     return [
       {
         'title': 'Total Sessions',
-        'value': totalSessions.toString(),
+        'value': totalSessions.toString(), // Real data from Supabase
         'subtitle': 'completed sessions',
         'icon': Icons.timer,
         'isHighlighted': false,
@@ -157,7 +160,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
       {
         'title': 'Avg Duration',
         'value': avgDurationStr,
-        'subtitle': 'minutes per session',
+        'subtitle': 'Personal best: $personalBestStr',
         'icon': Icons.access_time,
         'isHighlighted': false,
       },
@@ -171,6 +174,16 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
         'isHighlighted': false,
       },
     ];
+  }
+
+  String _formatDuration(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return '${minutes}m ${remainingSeconds}s';
+    }
   }
 
   void _updateAchievements(Map<String, dynamic> metrics) {
@@ -235,7 +248,11 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
         shadowColor: colorScheme.shadow,
         surfaceTintColor: Colors.transparent,
         leading: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () => Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.homeDashboard,
+            (route) => false,
+          ),
           child: Container(
             margin: EdgeInsets.all(2.w),
             decoration: BoxDecoration(
@@ -554,153 +571,296 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
 
                       // Temperature Progress Chart
                       if (_temperatureProgressData.isNotEmpty)
-                        ChartContainerWidget(
-                          title: 'Temperature Progress',
-                          subtitle: 'Coldest temperature reached over time',
-                          chart: Semantics(
-                            label: "Temperature Progress Line Chart",
-                            child: LineChart(
-                              LineChartData(
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: false,
-                                  horizontalInterval: 5,
-                                  getDrawingHorizontalLine: (value) {
-                                    return FlLine(
-                                      color: colorScheme.outline.withValues(
-                                        alpha: 0.1,
+                        Builder(
+                          builder: (context) {
+                            // Check if we have actual temperature data
+                            final hasActualData = _temperatureProgressData.any(
+                              (data) => data['temp'] != null,
+                            );
+
+                            if (!hasActualData) {
+                              return Container(
+                                margin: EdgeInsets.all(4.w),
+                                padding: EdgeInsets.all(6.w),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorScheme.shadow.withValues(
+                                        alpha: 0.05,
                                       ),
-                                      strokeWidth: 1,
-                                    );
-                                  },
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                                titlesData: FlTitlesData(
-                                  show: true,
-                                  rightTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  topTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 30,
-                                      getTitlesWidget: (
-                                        double value,
-                                        TitleMeta meta,
-                                      ) {
-                                        final index = value.toInt();
-                                        if (index >= 0 &&
-                                            index <
-                                                _temperatureProgressData
-                                                    .length) {
-                                          return Padding(
-                                            padding: EdgeInsets.only(top: 2.w),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.ac_unit,
+                                          color: Colors.blue,
+                                          size: 6.w,
+                                        ),
+                                        SizedBox(width: 3.w),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Temperature Progress',
+                                                style: theme
+                                                    .textTheme.titleMedium
+                                                    ?.copyWith(
+                                                  color: colorScheme.onSurface,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              SizedBox(height: 1.w),
+                                              Text(
+                                                'No temperature data yet',
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 4.w),
+                                    Container(
+                                      padding: EdgeInsets.all(4.w),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.info_outline,
+                                            color: colorScheme.primary,
+                                            size: 5.w,
+                                          ),
+                                          SizedBox(width: 3.w),
+                                          Expanded(
                                             child: Text(
-                                              _temperatureProgressData[index]
-                                                  ['week'] as String,
+                                              'Complete your first cold plunge session to see your temperature progress over time',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: colorScheme.onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return ChartContainerWidget(
+                              title: 'Temperature Progress',
+                              subtitle:
+                                  'Last ${_temperatureProgressData.length} sessions',
+                              chart: Semantics(
+                                label:
+                                    "Temperature Progress Line Chart - Last 10 Sessions",
+                                child: LineChart(
+                                  LineChartData(
+                                    gridData: FlGridData(
+                                      show: true,
+                                      drawVerticalLine: false,
+                                      horizontalInterval: 10,
+                                      getDrawingHorizontalLine: (value) {
+                                        return FlLine(
+                                          color: colorScheme.outline.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          strokeWidth: 1,
+                                        );
+                                      },
+                                    ),
+                                    titlesData: FlTitlesData(
+                                      show: true,
+                                      rightTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      topTitles: const AxisTitles(
+                                        sideTitles:
+                                            SideTitles(showTitles: false),
+                                      ),
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 30,
+                                          getTitlesWidget: (
+                                            double value,
+                                            TitleMeta meta,
+                                          ) {
+                                            final index = value.toInt();
+                                            if (index >= 0 &&
+                                                index <
+                                                    _temperatureProgressData
+                                                        .length) {
+                                              return Padding(
+                                                padding: EdgeInsets.only(
+                                                  top: 2.w,
+                                                ),
+                                                child: Text(
+                                                  _temperatureProgressData[
+                                                          index]['session']
+                                                      as String,
+                                                  style: TextStyle(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 10.sp,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                            return const Text('');
+                                          },
+                                        ),
+                                      ),
+                                      leftTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          interval: 10,
+                                          getTitlesWidget: (
+                                            double value,
+                                            TitleMeta meta,
+                                          ) {
+                                            return Text(
+                                              '${value.toInt()}°F',
                                               style: TextStyle(
                                                 color: colorScheme
                                                     .onSurfaceVariant,
-                                                fontWeight: FontWeight.w500,
+                                                fontWeight: FontWeight.w400,
                                                 fontSize: 10.sp,
                                               ),
-                                            ),
-                                          );
-                                        }
-                                        return const Text('');
-                                      },
-                                    ),
-                                  ),
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      interval: 5,
-                                      getTitlesWidget: (
-                                        double value,
-                                        TitleMeta meta,
-                                      ) {
-                                        return Text(
-                                          '${value.toInt()}°C',
-                                          style: TextStyle(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w400,
-                                            fontSize: 10.sp,
-                                          ),
-                                        );
-                                      },
-                                      reservedSize: 40,
-                                    ),
-                                  ),
-                                ),
-                                borderData: FlBorderData(
-                                  show: true,
-                                  border: Border.all(
-                                    color: colorScheme.outline.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                  ),
-                                ),
-                                minX: 0,
-                                maxX: (_temperatureProgressData.length - 1)
-                                    .toDouble(),
-                                minY: _getMinTemperature().toDouble(),
-                                maxY: _getMaxTemperature().toDouble(),
-                                lineBarsData: [
-                                  LineChartBarData(
-                                    spots: _temperatureProgressData
-                                        .asMap()
-                                        .entries
-                                        .map((entry) {
-                                      return FlSpot(
-                                        entry.key.toDouble(),
-                                        (entry.value['temp'] as num).toDouble(),
-                                      );
-                                    }).toList(),
-                                    isCurved: true,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.blue.withValues(alpha: 0.8),
-                                        Colors.blue,
-                                      ],
-                                    ),
-                                    barWidth: 3,
-                                    isStrokeCapRound: true,
-                                    dotData: FlDotData(
-                                      show: true,
-                                      getDotPainter: (
-                                        spot,
-                                        percent,
-                                        barData,
-                                        index,
-                                      ) {
-                                        return FlDotCirclePainter(
-                                          radius: 4,
-                                          color: Colors.blue,
-                                          strokeWidth: 2,
-                                          strokeColor: colorScheme.surface,
-                                        );
-                                      },
-                                    ),
-                                    belowBarData: BarAreaData(
-                                      show: true,
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.blue.withValues(alpha: 0.1),
-                                          Colors.blue.withValues(alpha: 0.05),
-                                        ],
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
+                                            );
+                                          },
+                                          reservedSize: 40,
+                                        ),
                                       ),
                                     ),
+                                    borderData: FlBorderData(
+                                      show: true,
+                                      border: Border.all(
+                                        color: colorScheme.outline.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                      ),
+                                    ),
+                                    minX: 0,
+                                    maxX: (_temperatureProgressData.length - 1)
+                                        .toDouble(),
+                                    minY: _getMinTemperature().toDouble(),
+                                    maxY: _getMaxTemperature().toDouble(),
+                                    lineTouchData: LineTouchData(
+                                      enabled: true,
+                                      touchTooltipData: LineTouchTooltipData(
+                                        tooltipBgColor: colorScheme.surface,
+                                        tooltipBorder: BorderSide(
+                                          color: colorScheme.outline.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
+                                        getTooltipItems: (touchedSpots) {
+                                          return touchedSpots.map((spot) {
+                                            final index = spot.x.toInt();
+                                            if (index >= 0 &&
+                                                index <
+                                                    _temperatureProgressData
+                                                        .length) {
+                                              final data =
+                                                  _temperatureProgressData[
+                                                      index];
+                                              return LineTooltipItem(
+                                                '${data['temp']}°F\n${data['dateLabel']}',
+                                                TextStyle(
+                                                  color: colorScheme.onSurface,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              );
+                                            }
+                                            return null;
+                                          }).toList();
+                                        },
+                                      ),
+                                    ),
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: _temperatureProgressData
+                                            .asMap()
+                                            .entries
+                                            .map((entry) {
+                                          final fahrenheit =
+                                              (entry.value['temp'] as num)
+                                                  .toDouble();
+                                          return FlSpot(
+                                            entry.key.toDouble(),
+                                            fahrenheit,
+                                          );
+                                        }).toList(),
+                                        isCurved: true,
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.blue.withValues(alpha: 0.8),
+                                            Colors.blue,
+                                          ],
+                                        ),
+                                        barWidth: 3,
+                                        isStrokeCapRound: true,
+                                        dotData: FlDotData(
+                                          show: true,
+                                          getDotPainter: (
+                                            spot,
+                                            percent,
+                                            barData,
+                                            index,
+                                          ) {
+                                            return FlDotCirclePainter(
+                                              radius: 4,
+                                              color: Colors.blue,
+                                              strokeWidth: 2,
+                                              strokeColor: colorScheme.surface,
+                                            );
+                                          },
+                                        ),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.blue
+                                                  .withValues(alpha: 0.1),
+                                              Colors.blue
+                                                  .withValues(alpha: 0.05),
+                                            ],
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                          onTap: () {
-                            // Navigate to detailed chart view
+                              onTap: () {
+                                // Navigate to detailed chart view
+                              },
+                            );
                           },
                         ),
 
@@ -750,23 +910,35 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   }
 
   int _getMinTemperature() {
-    if (_temperatureProgressData.isEmpty) return 0;
-    final minTemp = _temperatureProgressData
-        .map<num>((data) => data['temp'] as num)
-        .reduce((a, b) => a < b ? a : b)
-        .floor();
-    return (minTemp - 2)
-        .clamp(0, 50); // Add padding and ensure reasonable range
+    if (_temperatureProgressData.isEmpty) return 30;
+
+    // Filter out null temperatures and get minimum
+    final validTemps = _temperatureProgressData
+        .where((data) => data['temp'] != null)
+        .map<int>((data) => (data['temp'] as num).toInt())
+        .toList();
+
+    if (validTemps.isEmpty) return 30;
+
+    final minTemp = validTemps.reduce((a, b) => a < b ? a : b);
+    // Temperature is already in Fahrenheit from database, add padding
+    return (minTemp - 10).clamp(0, 150);
   }
 
   int _getMaxTemperature() {
-    if (_temperatureProgressData.isEmpty) return 25;
-    final maxTemp = _temperatureProgressData
-        .map<num>((data) => data['temp'] as num)
-        .reduce((a, b) => a > b ? a : b)
-        .ceil();
-    return (maxTemp + 2)
-        .clamp(5, 50); // Add padding and ensure reasonable range
+    if (_temperatureProgressData.isEmpty) return 70;
+
+    // Filter out null temperatures and get maximum
+    final validTemps = _temperatureProgressData
+        .where((data) => data['temp'] != null)
+        .map<int>((data) => (data['temp'] as num).toInt())
+        .toList();
+
+    if (validTemps.isEmpty) return 70;
+
+    final maxTemp = validTemps.reduce((a, b) => a > b ? a : b);
+    // Temperature is already in Fahrenheit from database, add padding
+    return (maxTemp + 10).clamp(40, 150);
   }
 
   void _showExportBottomSheet(BuildContext context) {

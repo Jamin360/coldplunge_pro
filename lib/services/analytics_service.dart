@@ -128,48 +128,58 @@ class AnalyticsService {
     }
   }
 
-  // Get temperature progress data - FIXED to use proper aggregation
+  // Get temperature progress data - Updated to show last 10 sessions
   Future<List<Map<String, dynamic>>> getTemperatureProgressData() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
-      final now = DateTime.now();
+      // Fetch last 10 sessions with temperature data
+      final response = await _supabase
+          .from('plunge_sessions')
+          .select('id, temperature, created_at')
+          .eq('user_id', userId)
+          .not('temperature', 'is', null)
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      if (response.isEmpty) {
+        return [];
+      }
+
+      // Reverse to show oldest to newest for chart progression
+      final sessions =
+          List<Map<String, dynamic>>.from(response).reversed.toList();
+
+      // Format data for chart display
       List<Map<String, dynamic>> tempData = [];
+      for (int i = 0; i < sessions.length; i++) {
+        final session = sessions[i];
+        final temp = session['temperature'];
+        final createdAt = DateTime.parse(session['created_at'] as String);
 
-      // Get last 8 weeks of temperature data for better trend visibility
-      for (int i = 7; i >= 0; i--) {
-        final weekStart = _getWeekStartDate(
-          now.subtract(Duration(days: i * 7)),
-        );
-        final weekEnd = weekStart.add(const Duration(days: 7));
+        // Create session label (e.g., "Session 1", "Session 2")
+        final sessionLabel = 'S${i + 1}';
 
-        final response = await _supabase
-            .from('plunge_sessions')
-            .select('temperature')
-            .eq('user_id', userId)
-            .gte('created_at', weekStart.toIso8601String())
-            .lt('created_at', weekEnd.toIso8601String())
-            .not('temperature', 'is', null);
-
-        double? avgTemp;
-        if (response.isNotEmpty) {
-          final temperatures = response
-              .map<int>((session) => session['temperature'] as int)
-              .toList();
-          // Use average temperature for smoother trend line
-          avgTemp = temperatures.reduce((a, b) => a + b) / temperatures.length;
-        }
+        // Calculate days ago for better context
+        final daysAgo = DateTime.now().difference(createdAt).inDays;
+        final dateLabel = daysAgo == 0
+            ? 'Today'
+            : daysAgo == 1
+                ? 'Yesterday'
+                : '${daysAgo}d ago';
 
         tempData.add({
-          'week': i == 0 ? 'This Week' : '${i}w ago',
-          'temp': avgTemp ?? 20.0, // More realistic default temperature
-          'weekStart': weekStart,
+          'session': sessionLabel,
+          'temp': temp is int ? temp : (temp as num).toInt(),
+          'date': createdAt,
+          'dateLabel': dateLabel,
         });
       }
 
       return tempData;
     } catch (e) {
+      print('Error fetching temperature data: $e');
       throw Exception('Failed to fetch temperature data: $e');
     }
   }
@@ -270,10 +280,14 @@ class AnalyticsService {
               moodData.length;
 
       // Find most common moods with null safety
-      final mostCommonPreMood =
-          _findMostCommonMood(moodCounts, isPreMood: true);
-      final mostCommonPostMood =
-          _findMostCommonMood(moodCounts, isPreMood: false);
+      final mostCommonPreMood = _findMostCommonMood(
+        moodCounts,
+        isPreMood: true,
+      );
+      final mostCommonPostMood = _findMostCommonMood(
+        moodCounts,
+        isPreMood: false,
+      );
 
       // Calculate mood consistency (how often moods improve)
       final improvementCount =
@@ -289,19 +303,22 @@ class AnalyticsService {
         'avgPreMoodScore': double.parse(avgPreMoodScore.toStringAsFixed(1)),
         'avgPostMoodScore': double.parse(avgPostMoodScore.toStringAsFixed(1)),
         'avgImprovement': double.parse(avgImprovement.toStringAsFixed(1)),
-        'improvementRate':
-            double.parse((consistencyRate * 100).toStringAsFixed(1)),
+        'improvementRate': double.parse(
+          (consistencyRate * 100).toStringAsFixed(1),
+        ),
         'mostCommonPreMood': mostCommonPreMood,
         'mostCommonPostMood': mostCommonPostMood,
         'dailyData': moodData
-            .map((d) => {
-                  'date': (d['date'] as DateTime).toIso8601String(),
-                  'preMoodScore': d['preMoodScore'],
-                  'postMoodScore': d['postMoodScore'],
-                  'improvement': d['improvement'],
-                  'preMood': d['preMood'],
-                  'postMood': d['postMood'],
-                })
+            .map(
+              (d) => {
+                'date': (d['date'] as DateTime).toIso8601String(),
+                'preMoodScore': d['preMoodScore'],
+                'postMoodScore': d['postMoodScore'],
+                'improvement': d['improvement'],
+                'preMood': d['preMood'],
+                'postMood': d['postMood'],
+              },
+            )
             .toList(),
         'weeklyTrends': weeklyTrends,
         'moodDistribution': _calculateMoodDistribution(moodCounts),
@@ -322,7 +339,7 @@ class AnalyticsService {
       'energized',
       'focused',
       'calm',
-      'euphoric'
+      'euphoric',
     ];
     return validMoods.contains(mood.toLowerCase());
   }
@@ -352,8 +369,10 @@ class AnalyticsService {
   }
 
   /// Find most common mood with proper null safety
-  String _findMostCommonMood(Map<String, int> moodCounts,
-      {required bool isPreMood}) {
+  String _findMostCommonMood(
+    Map<String, int> moodCounts, {
+    required bool isPreMood,
+  }) {
     if (moodCounts.isEmpty) return 'neutral';
 
     // Filter for pre or post mood analysis if needed
@@ -363,7 +382,8 @@ class AnalyticsService {
 
   /// Generate weekly mood trend data
   List<Map<String, dynamic>> _generateWeeklyMoodTrends(
-      List<Map<String, dynamic>> moodData) {
+    List<Map<String, dynamic>> moodData,
+  ) {
     if (moodData.isEmpty) return [];
 
     // Group by week
@@ -417,8 +437,12 @@ class AnalyticsService {
     final total = moodCounts.values.reduce((a, b) => a + b);
     if (total == 0) return {};
 
-    return moodCounts.map((mood, count) =>
-        MapEntry(mood, double.parse((count / total * 100).toStringAsFixed(1))));
+    return moodCounts.map(
+      (mood, count) => MapEntry(
+        mood,
+        double.parse((count / total * 100).toStringAsFixed(1)),
+      ),
+    );
   }
 
   /// Return empty analytics when no data is available
@@ -443,13 +467,13 @@ class AnalyticsService {
     final sessions = analyticsData['sessions'] as List<dynamic>;
     final weeklyGoal = analyticsData['weeklyGoal'] as Map<String, dynamic>?;
 
-    // Total sessions from profile
+    // Total sessions from profile (synced via update_user_stats trigger)
     final totalSessions = profile['total_sessions'] ?? 0;
 
     // Current streak from profile
     final currentStreak = profile['streak_count'] ?? 0;
 
-    // Calculate average duration
+    // Calculate average duration from actual session data
     double avgDuration = 0.0;
     if (sessions.isNotEmpty) {
       final durations =
@@ -469,12 +493,16 @@ class AnalyticsService {
       }
     }
 
+    // Get personal best duration from profile
+    final personalBestDuration = profile['personal_best_duration'] ?? 0;
+
     return {
       'totalSessions': totalSessions,
       'currentStreak': currentStreak,
       'avgDuration': avgDuration,
       'coldestTemp': coldestTemp,
       'weeklyGoal': weeklyGoal,
+      'personalBestDuration': personalBestDuration,
     };
   }
 

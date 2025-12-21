@@ -198,16 +198,10 @@ class _PostCardWidgetState extends State<PostCardWidget>
   }
 
   Widget _buildPostContent(ThemeData theme, ColorScheme colorScheme) {
-    // Convert temperature from Celsius to Fahrenheit if it's in format "XX°C"
+    // Keep the same temperature number but display as Fahrenheit
     String displayTemp = widget.post['temperature'] as String;
     if (displayTemp.endsWith('°C')) {
-      final celsiusValue = double.tryParse(
-        displayTemp.replaceAll('°C', '').trim(),
-      );
-      if (celsiusValue != null) {
-        final fahrenheit = (celsiusValue * 9 / 5 + 32).toStringAsFixed(1);
-        displayTemp = '$fahrenheit°F';
-      }
+      displayTemp = displayTemp.replaceAll('°C', '°F');
     }
 
     return Padding(
@@ -259,7 +253,7 @@ class _PostCardWidgetState extends State<PostCardWidget>
                     ),
                     SizedBox(width: 1.w),
                     Text(
-                      displayTemp, // Changed: Use converted temperature
+                      displayTemp,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.secondary,
                         fontWeight: FontWeight.w600,
@@ -347,10 +341,9 @@ class _PostCardWidgetState extends State<PostCardWidget>
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 2.h),
                 decoration: BoxDecoration(
-                  color:
-                      _isLiked
-                          ? colorScheme.primary.withValues(alpha: 0.1)
-                          : Colors.transparent,
+                  color: _isLiked
+                      ? colorScheme.primary.withValues(alpha: 0.1)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -363,10 +356,9 @@ class _PostCardWidgetState extends State<PostCardWidget>
                           scale: _likeAnimation.value,
                           child: CustomIconWidget(
                             iconName: _isLiked ? 'favorite' : 'favorite_border',
-                            color:
-                                _isLiked
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurfaceVariant,
+                            color: _isLiked
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant,
                             size: 20,
                           ),
                         );
@@ -376,10 +368,9 @@ class _PostCardWidgetState extends State<PostCardWidget>
                     Text(
                       'Like',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color:
-                            _isLiked
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
+                        color: _isLiked
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
                         fontWeight:
                             _isLiked ? FontWeight.w600 : FontWeight.w400,
                       ),
@@ -484,52 +475,51 @@ class _PostCardWidgetState extends State<PostCardWidget>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-            ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12.w,
-                    height: 0.5.h,
-                    margin: EdgeInsets.symmetric(vertical: 2.h),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  ListTile(
-                    leading: CustomIconWidget(
-                      iconName: 'report',
-                      color: Theme.of(context).colorScheme.error,
-                      size: 24,
-                    ),
-                    title: Text('Report Post'),
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  ListTile(
-                    leading: CustomIconWidget(
-                      iconName: 'block',
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      size: 24,
-                    ),
-                    title: Text('Block User'),
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  SizedBox(height: 2.h),
-                ],
-              ),
-            ),
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(20),
           ),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 12.w,
+                height: 0.5.h,
+                margin: EdgeInsets.symmetric(vertical: 2.h),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: CustomIconWidget(
+                  iconName: 'report',
+                  color: Theme.of(context).colorScheme.error,
+                  size: 24,
+                ),
+                title: Text('Report Post'),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: CustomIconWidget(
+                  iconName: 'block',
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  size: 24,
+                ),
+                title: Text('Block User'),
+                onTap: () => Navigator.pop(context),
+              ),
+              SizedBox(height: 2.h),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

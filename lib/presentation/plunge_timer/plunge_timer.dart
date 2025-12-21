@@ -34,8 +34,8 @@ class _PlungeTimerState extends State<PlungeTimer>
   // Session data
   double _temperature = 15.0;
   String _location = 'Home Ice Bath';
-  int _preMood = 3;
-  int _postMood = 4;
+  int _preMood = 2; // Default to Neutral
+  int _postMood = 2; // Default to Neutral
   String _sessionNotes = '';
   String? _breathingTechnique;
 
@@ -45,6 +45,10 @@ class _PlungeTimerState extends State<PlungeTimer>
   bool _showBreathing = false;
   bool _isBreathingActive = false;
   bool _isSaving = false;
+  bool _isSavingSession = false;
+  bool _isSessionComplete = false;
+  bool _showCompletionWidget = false;
+  Duration _completedDuration = Duration.zero;
 
   // Audio state
   bool _isAudioPlaying = false;
@@ -191,8 +195,9 @@ class _PlungeTimerState extends State<PlungeTimer>
   }
 
   void _handleSetupComplete(double temperature, String location, int mood) {
+    // Temperature is already in Fahrenheit from session_setup_widget conversion
     setState(() {
-      _temperature = temperature;
+      _temperature = temperature; // Already Fahrenheit - stored directly
       _location = location;
       _preMood = mood;
       _showSetup = false;
@@ -230,21 +235,11 @@ class _PlungeTimerState extends State<PlungeTimer>
   String _getMoodString(int mood) {
     switch (mood) {
       case 1:
-        return 'stressed';
-      case 2:
-        return 'tired';
-      case 3:
         return 'anxious';
-      case 4:
+      case 2:
         return 'neutral';
-      case 5:
+      case 3:
         return 'energized';
-      case 6:
-        return 'focused';
-      case 7:
-        return 'calm';
-      case 8:
-        return 'euphoric';
       default:
         return 'neutral';
     }
@@ -253,14 +248,9 @@ class _PlungeTimerState extends State<PlungeTimer>
   // Enhanced mood validation to ensure correct database storage
   bool _validateMoodString(String mood) {
     const validMoods = [
-      'stressed',
-      'tired',
       'anxious',
       'neutral',
       'energized',
-      'focused',
-      'calm',
-      'euphoric',
     ];
     return validMoods.contains(mood);
   }
@@ -281,20 +271,21 @@ class _PlungeTimerState extends State<PlungeTimer>
         return;
       }
 
-      // Create session data object with correct field names that match database schema
+      // CRITICAL: Temperature is stored in Fahrenheit in database
+      // _temperature already contains Fahrenheit value from session setup conversion
       final sessionData = {
         'location': _location,
         'duration': _sessionDuration.inSeconds,
-        'temperature': _temperature.round(),
-        'pre_mood': preMoodString, // Fixed: Use snake_case to match database
-        'post_mood': postMoodString, // Fixed: Use snake_case to match database
+        'temperature': _temperature.round(), // Already Fahrenheit
+        'pre_mood': preMoodString,
+        'post_mood': postMoodString,
         'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
         'breathing_technique': _breathingTechnique,
       };
 
-      // Add debug logging for mood values
+      // Add debug logging for temperature storage
       print(
-        'Saving session with moods - Pre: $preMoodString (from $_preMood), Post: $postMoodString (from $_postMood)',
+        'Saving session with temperature: ${_temperature.round()}°F',
       );
 
       // Non-blocking background save - don't await
@@ -322,20 +313,21 @@ class _PlungeTimerState extends State<PlungeTimer>
         );
       }
 
-      // Create session data object with correct field names that match database schema
+      // CRITICAL: Temperature is stored in Fahrenheit in database
+      // _temperature already contains Fahrenheit value from session setup conversion
       final sessionData = {
         'location': _location,
         'duration': _sessionDuration.inSeconds,
-        'temperature': _temperature.round(),
-        'pre_mood': preMoodString, // Fixed: Use snake_case to match database
-        'post_mood': postMoodString, // Fixed: Use snake_case to match database
+        'temperature': _temperature.round(), // Already Fahrenheit
+        'pre_mood': preMoodString,
+        'post_mood': postMoodString,
         'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
         'breathing_technique': _breathingTechnique,
       };
 
-      // Add debug logging for mood values
+      // Add debug logging for temperature storage
       print(
-        'Saving session with moods - Pre: $preMoodString (from $_preMood), Post: $postMoodString (from $_postMood)',
+        'Saving session with temperature: ${_temperature.round()}°F',
       );
 
       // Save with ultra-optimized method and timeout
@@ -452,6 +444,42 @@ class _PlungeTimerState extends State<PlungeTimer>
     setState(() => _audioVolume = volume);
   }
 
+  Future<void> _saveSession() async {
+    setState(() => _isSavingSession = true);
+
+    try {
+      await SessionService.instance.saveSession(
+        duration: _completedDuration.inSeconds,
+        temperature: _temperature,
+        moodBefore: _getMoodString(_preMood),
+        moodAfter: _getMoodString(_postMood),
+        notes: _sessionNotes,
+        location: _location,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session saved successfully!')),
+        );
+        setState(() {
+          _isSessionComplete = false;
+          _showCompletionWidget = false;
+          _completedDuration = Duration.zero;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving session: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingSession = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -480,7 +508,11 @@ class _PlungeTimerState extends State<PlungeTimer>
                           GestureDetector(
                             onTap: () {
                               HapticFeedback.lightImpact();
-                              Navigator.pop(context);
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                AppRoutes.homeDashboard,
+                                (route) => false,
+                              );
                             },
                             child: Container(
                               padding: const EdgeInsets.all(12),
@@ -518,14 +550,13 @@ class _PlungeTimerState extends State<PlungeTimer>
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color:
-                                    _showBreathing
-                                        ? colorScheme.primary.withValues(
-                                          alpha: 0.1,
-                                        )
-                                        : colorScheme.surface.withValues(
-                                          alpha: 0.9,
-                                        ),
+                                color: _showBreathing
+                                    ? colorScheme.primary.withValues(
+                                        alpha: 0.1,
+                                      )
+                                    : colorScheme.surface.withValues(
+                                        alpha: 0.9,
+                                      ),
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
@@ -539,10 +570,9 @@ class _PlungeTimerState extends State<PlungeTimer>
                               ),
                               child: CustomIconWidget(
                                 iconName: 'air',
-                                color:
-                                    _showBreathing
-                                        ? colorScheme.primary
-                                        : colorScheme.onSurface,
+                                color: _showBreathing
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
                                 size: 20,
                               ),
                             ),
@@ -582,11 +612,11 @@ class _PlungeTimerState extends State<PlungeTimer>
                                 child: Center(
                                   child: Text(
                                     '$_countdownValue',
-                                    style: theme.textTheme.displayLarge
-                                        ?.copyWith(
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                    style:
+                                        theme.textTheme.displayLarge?.copyWith(
+                                      color: colorScheme.primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -661,14 +691,74 @@ class _PlungeTimerState extends State<PlungeTimer>
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withValues(alpha: 0.5),
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: SessionCompletionWidget(
+                        duration: _sessionDuration.inSeconds,
+                        temperature: _temperature,
+                        onSaveSession: _handleSessionComplete,
+                        onDiscardSession: () {
+                          setState(() => _showCompletion = false);
+                          _resetSession();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+
+              if (_showCompletionWidget)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: EdgeInsets.all(4.w),
                     child: SessionCompletionWidget(
-                      sessionDuration: _sessionDuration,
+                      duration: _completedDuration.inSeconds,
                       temperature: _temperature,
-                      location: _location,
-                      onComplete: _handleSessionComplete,
-                      onSkip: () {
-                        setState(() => _showCompletion = false);
-                        _resetSession();
+                      onSaveSession: (int mood, String notes) async {
+                        setState(() => _isSavingSession = true);
+
+                        try {
+                          await SessionService.instance.saveSession(
+                            duration: _completedDuration.inSeconds,
+                            temperature: _temperature,
+                            moodBefore: _getMoodString(_preMood),
+                            moodAfter: _getMoodString(mood),
+                            notes: notes,
+                            location: _location,
+                          );
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Session saved successfully!')),
+                            );
+                            setState(() {
+                              _isSessionComplete = false;
+                              _showCompletionWidget = false;
+                              _completedDuration = Duration.zero;
+                            });
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Error saving session: $e')),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() => _isSavingSession = false);
+                          }
+                        }
+                      },
+                      onDiscardSession: () {
+                        setState(() {
+                          _isSessionComplete = false;
+                          _showCompletionWidget = false;
+                          _completedDuration = Duration.zero;
+                        });
                       },
                     ),
                   ),

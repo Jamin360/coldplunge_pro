@@ -4,11 +4,9 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
-import '../../services/community_service.dart';
 import '../../services/session_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_bar.dart';
-import './widgets/community_highlights_widget.dart';
 import './widgets/quick_stats_card_widget.dart';
 import './widgets/recent_session_card_widget.dart';
 import './widgets/streak_counter_widget.dart';
@@ -33,7 +31,6 @@ class _HomeDashboardState extends State<HomeDashboard>
   // Data from Supabase
   List<Map<String, dynamic>> _recentSessions = [];
   List<Map<String, dynamic>> _weeklyData = [];
-  List<Map<String, dynamic>> _communityHighlights = [];
   Map<String, dynamic> _userStats = {};
   int _currentStreak = 0;
   bool _hasPlungedToday = false;
@@ -72,11 +69,10 @@ class _HomeDashboardState extends State<HomeDashboard>
     setState(() => _isLoading = true);
 
     try {
-      // Load all dashboard data in parallel (weather is now handled by WeatherWidget)
+      // Load all dashboard data in parallel (remove community highlights fetch)
       final results = await Future.wait([
         SessionService.instance.getRecentSessions(),
         SessionService.instance.getWeeklyProgress(),
-        CommunityService.instance.getCommunityHighlights(),
         AuthService.instance.getUserStats(),
         AuthService.instance.hasSessionToday(),
       ]);
@@ -84,9 +80,8 @@ class _HomeDashboardState extends State<HomeDashboard>
       setState(() {
         _recentSessions = results[0] as List<Map<String, dynamic>>;
         _weeklyData = results[1] as List<Map<String, dynamic>>;
-        _communityHighlights = results[2] as List<Map<String, dynamic>>;
-        _userStats = results[3] as Map<String, dynamic>;
-        _hasPlungedToday = results[4] as bool;
+        _userStats = results[2] as Map<String, dynamic>;
+        _hasPlungedToday = results[3] as bool;
         _currentStreak = _userStats['streak_count'] ?? 0;
       });
     } catch (error) {
@@ -198,7 +193,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                     ),
                     _buildDetailRow(
                       'Duration',
-                      '${session['duration']} seconds',
+                      _formatDuration(session['duration'] as int),
                     ),
                     _buildDetailRow(
                       'Temperature',
@@ -301,6 +296,16 @@ class _HomeDashboardState extends State<HomeDashboard>
       'December',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  String _formatDuration(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return '${minutes}m ${remainingSeconds}s';
+    }
   }
 
   void _showDeleteConfirmation(Map<String, dynamic> session) {
@@ -505,9 +510,9 @@ class _HomeDashboardState extends State<HomeDashboard>
                           Expanded(
                             child: QuickStatsCardWidget(
                               title: 'Avg Duration',
-                              value: '${_userStats['avg_duration'] ?? '0.0'}m',
+                              value: '${_userStats['avg_duration'] ?? '0.0'}s',
                               subtitle:
-                                  'Personal best: ${_userStats['personal_best_duration'] ?? 0}m',
+                                  'Personal best: ${_userStats['personal_best_duration'] ?? 0}s',
                               iconName: 'timer',
                               accentColor: colorScheme.secondary,
                             ),
@@ -531,21 +536,9 @@ class _HomeDashboardState extends State<HomeDashboard>
                     SizedBox(height: 3.h),
 
                     // Weather Widget (now handles its own data)
-                    Center(
-                      child: const WeatherWidget(),
-                    ),
+                    Center(child: const WeatherWidget()),
 
                     SizedBox(height: 3.h),
-
-                    // Community Highlights
-                    if (_communityHighlights.isNotEmpty) ...[
-                      Center(
-                        child: CommunityHighlightsWidget(
-                          highlights: _communityHighlights,
-                        ),
-                      ),
-                      SizedBox(height: 3.h),
-                    ],
 
                     // Recent Sessions
                     Center(
@@ -564,7 +557,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                             GestureDetector(
                               onTap: () => Navigator.pushNamed(
                                 context,
-                                '/personal-analytics',
+                                AppRoutes.sessionHistory,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,

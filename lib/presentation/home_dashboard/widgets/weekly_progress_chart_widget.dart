@@ -23,6 +23,16 @@ class WeeklyProgressChartWidget extends StatelessWidget {
     return (paddedMax / 5).ceil() * 5.0;
   }
 
+  // Helper method to format duration display
+  String _formatDuration(int seconds) {
+    if (seconds >= 60) {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return '${minutes}m ${remainingSeconds}s';
+    }
+    return '${seconds}s';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -88,7 +98,7 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                             weeklyData[group.x.toInt()]['day'] as String;
                         final duration = rod.toY.toInt();
                         return BarTooltipItem(
-                          '$day\n$duration min',
+                          '$day\n${_formatDuration(duration)}',
                           theme.textTheme.bodySmall!.copyWith(
                             color: colorScheme.onInverseSurface,
                             fontWeight: FontWeight.w500,
@@ -135,7 +145,7 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                           return Padding(
                             padding: EdgeInsets.only(right: 1.w),
                             child: Text(
-                              '${value.toInt()}m',
+                              _formatDuration(value.toInt()),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w400,
@@ -150,42 +160,38 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                     ),
                   ),
                   borderData: FlBorderData(show: false),
-                  barGroups:
-                      weeklyData.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final data = entry.value;
-                        final duration = (data['duration'] as num).toDouble();
-                        final hasPlunge = data['hasPlunge'] as bool;
+                  barGroups: weeklyData.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final data = entry.value;
+                    final duration = (data['duration'] as num).toDouble();
+                    final hasPlunge = data['hasPlunge'] as bool;
 
-                        return BarChartGroupData(
-                          x: index,
-                          barRods: [
-                            BarChartRodData(
-                              toY: duration,
-                              color:
-                                  hasPlunge
-                                      ? colorScheme.primary
-                                      : colorScheme.outline.withValues(
-                                        alpha: 0.3,
-                                      ),
-                              width:
-                                  3.5.w, // Slightly narrower bars for better fit
-                              borderRadius: BorderRadius.circular(4),
-                              gradient:
-                                  hasPlunge
-                                      ? LinearGradient(
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                        colors: [
-                                          colorScheme.primary,
-                                          colorScheme.secondary,
-                                        ],
-                                      )
-                                      : null,
-                            ),
-                          ],
-                        );
-                      }).toList(),
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        BarChartRodData(
+                          toY: duration,
+                          color: hasPlunge
+                              ? colorScheme.primary
+                              : colorScheme.outline.withValues(
+                                  alpha: 0.3,
+                                ),
+                          width: 3.5.w, // Slightly narrower bars for better fit
+                          borderRadius: BorderRadius.circular(4),
+                          gradient: hasPlunge
+                              ? LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    colorScheme.primary,
+                                    colorScheme.secondary,
+                                  ],
+                                )
+                              : null,
+                        ),
+                      ],
+                    );
+                  }).toList(),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,

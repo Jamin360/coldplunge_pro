@@ -28,15 +28,13 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
   final TextEditingController _locationController = TextEditingController();
 
   bool _isCelsius = false;
-  int _selectedMood = 3;
+  int _selectedMood = 2; // Default to Neutral
   bool _isLocationLoading = false;
 
   final List<Map<String, dynamic>> _moodOptions = [
     {'emoji': '😰', 'label': 'Anxious', 'value': 1},
-    {'emoji': '😟', 'label': 'Nervous', 'value': 2},
-    {'emoji': '😐', 'label': 'Neutral', 'value': 3},
-    {'emoji': '😊', 'label': 'Excited', 'value': 4},
-    {'emoji': '🔥', 'label': 'Pumped', 'value': 5},
+    {'emoji': '😐', 'label': 'Neutral', 'value': 2},
+    {'emoji': '⚡', 'label': 'Energized', 'value': 3},
   ];
 
   @override
@@ -91,11 +89,14 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
 
   void _handleSetupComplete() {
     final temperature = double.tryParse(_temperatureController.text) ?? 59.0;
-    final convertedTemp = _isCelsius ? temperature : (temperature - 32) * 5 / 9;
+    // CRITICAL: Always convert to Fahrenheit for Supabase database storage
+    // Database stores all temperatures in Fahrenheit regardless of user input unit
+    final temperatureInFahrenheit =
+        _isCelsius ? (temperature * 9 / 5) + 32 : temperature;
 
     HapticFeedback.mediumImpact();
     widget.onSetupComplete(
-      convertedTemp,
+      temperatureInFahrenheit,
       _locationController.text,
       _selectedMood,
     );
@@ -194,22 +195,20 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
                                     vertical: 1.h,
                                   ),
                                   decoration: BoxDecoration(
-                                    color:
-                                        _isCelsius
-                                            ? colorScheme.primary
-                                            : Colors.transparent,
+                                    color: _isCelsius
+                                        ? colorScheme.primary
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     '°C',
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(
-                                          color:
-                                              _isCelsius
-                                                  ? colorScheme.onPrimary
-                                                  : colorScheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                    style:
+                                        theme.textTheme.labelMedium?.copyWith(
+                                      color: _isCelsius
+                                          ? colorScheme.onPrimary
+                                          : colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -221,22 +220,20 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
                                     vertical: 1.h,
                                   ),
                                   decoration: BoxDecoration(
-                                    color:
-                                        !_isCelsius
-                                            ? colorScheme.primary
-                                            : Colors.transparent,
+                                    color: !_isCelsius
+                                        ? colorScheme.primary
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
                                     '°F',
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(
-                                          color:
-                                              !_isCelsius
-                                                  ? colorScheme.onPrimary
-                                                  : colorScheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                    style:
+                                        theme.textTheme.labelMedium?.copyWith(
+                                      color: !_isCelsius
+                                          ? colorScheme.onPrimary
+                                          : colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -272,21 +269,20 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
                         color: colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child:
-                          _isLocationLoading
-                              ? SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: colorScheme.primary,
-                                ),
-                              )
-                              : CustomIconWidget(
-                                iconName: 'my_location',
+                      child: _isLocationLoading
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
                                 color: colorScheme.primary,
-                                size: 20,
                               ),
+                            )
+                          : CustomIconWidget(
+                              iconName: 'my_location',
+                              color: colorScheme.primary,
+                              size: 20,
+                            ),
                     ),
                   ),
                 ),
@@ -304,61 +300,56 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
               SizedBox(height: 1.h),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children:
-                    _moodOptions.map((mood) {
-                      final isSelected = _selectedMood == mood['value'];
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _selectedMood = mood['value']);
-                          HapticFeedback.lightImpact();
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 3.w,
-                            vertical: 1.5.h,
+                children: _moodOptions.map((mood) {
+                  final isSelected = _selectedMood == mood['value'];
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedMood = mood['value']);
+                      HapticFeedback.lightImpact();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 3.w,
+                        vertical: 1.5.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primary.withValues(alpha: 0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.primary
+                              : colorScheme.outline.withValues(
+                                  alpha: 0.3,
+                                ),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            mood['emoji'],
+                            style: TextStyle(fontSize: 20.sp),
                           ),
-                          decoration: BoxDecoration(
-                            color:
-                                isSelected
-                                    ? colorScheme.primary.withValues(alpha: 0.1)
-                                    : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color:
-                                  isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.outline.withValues(
-                                        alpha: 0.3,
-                                      ),
-                              width: isSelected ? 2 : 1,
+                          SizedBox(height: 0.5.h),
+                          Text(
+                            mood['label'],
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurfaceVariant,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              Text(
-                                mood['emoji'],
-                                style: TextStyle(fontSize: 20.sp),
-                              ),
-                              SizedBox(height: 0.5.h),
-                              Text(
-                                mood['label'],
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color:
-                                      isSelected
-                                          ? colorScheme.primary
-                                          : colorScheme.onSurfaceVariant,
-                                  fontWeight:
-                                      isSelected
-                                          ? FontWeight.w600
-                                          : FontWeight.w400,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
               SizedBox(height: 4.h),
 

@@ -8,41 +8,53 @@ class AppTheme {
 
   // Arctic Clarity Color Palette - Cool-dominant with warm accent touches
   static const Color primaryLight = Color(0xFF1E3A8A); // Deep ocean blue
-  static const Color primaryVariantLight =
-      Color(0xFF1E40AF); // Slightly lighter ocean blue
+  static const Color primaryVariantLight = Color(
+    0xFF1E40AF,
+  ); // Slightly lighter ocean blue
   static const Color secondaryLight = Color(0xFF0EA5E9); // Refreshing sky blue
-  static const Color secondaryVariantLight =
-      Color(0xFF0284C7); // Deeper sky blue
-  static const Color accentLight =
-      Color(0xFFF59E0B); // Warm amber for achievements
-  static const Color backgroundLight =
-      Color(0xFFFAFBFF); // Soft off-white with blue undertone
-  static const Color surfaceLight =
-      Color(0xFFFFFFFF); // Pure white for content cards
-  static const Color successLight =
-      Color(0xFF10B981); // Natural green for completed sessions
-  static const Color warningLight =
-      Color(0xFFF59E0B); // Consistent amber for alerts
-  static const Color errorLight =
-      Color(0xFFEF4444); // Clear red for critical alerts
+  static const Color secondaryVariantLight = Color(
+    0xFF0284C7,
+  ); // Deeper sky blue
+  static const Color accentLight = Color(
+    0xFFF59E0B,
+  ); // Warm amber for achievements
+  static const Color backgroundLight = Color(
+    0xFFFAFBFF,
+  ); // Soft off-white with blue undertone
+  static const Color surfaceLight = Color(
+    0xFFFFFFFF,
+  ); // Pure white for content cards
+  static const Color successLight = Color(
+    0xFF10B981,
+  ); // Natural green for completed sessions
+  static const Color warningLight = Color(
+    0xFFF59E0B,
+  ); // Consistent amber for alerts
+  static const Color errorLight = Color(
+    0xFFEF4444,
+  ); // Clear red for critical alerts
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFFFFFFFF);
-  static const Color onBackgroundLight =
-      Color(0xFF1F2937); // Dark gray for primary content
+  static const Color onBackgroundLight = Color(
+    0xFF1F2937,
+  ); // Dark gray for primary content
   static const Color onSurfaceLight = Color(0xFF1F2937);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
   // Dark theme variations maintaining Arctic Clarity principles
-  static const Color primaryDark =
-      Color(0xFF3B82F6); // Brighter blue for dark mode
+  static const Color primaryDark = Color(
+    0xFF3B82F6,
+  ); // Brighter blue for dark mode
   static const Color primaryVariantDark = Color(0xFF2563EB);
   static const Color secondaryDark = Color(0xFF0EA5E9);
   static const Color secondaryVariantDark = Color(0xFF0284C7);
   static const Color accentDark = Color(0xFFF59E0B);
-  static const Color backgroundDark =
-      Color(0xFF0F172A); // Deep navy for dark background
-  static const Color surfaceDark =
-      Color(0xFF1E293B); // Elevated surface in dark mode
+  static const Color backgroundDark = Color(
+    0xFF0F172A,
+  ); // Deep navy for dark background
+  static const Color surfaceDark = Color(
+    0xFF1E293B,
+  ); // Elevated surface in dark mode
   static const Color successDark = Color(0xFF10B981);
   static const Color warningDark = Color(0xFFF59E0B);
   static const Color errorDark = Color(0xFFEF4444);
@@ -67,19 +79,25 @@ class AppTheme {
   static const Color borderDark = Color(0xFF475569);
 
   // Text colors optimized for mobile readability
-  static const Color textPrimaryLight =
-      Color(0xFF1F2937); // Dark gray for primary content
-  static const Color textSecondaryLight =
-      Color(0xFF6B7280); // Medium gray for supporting info
-  static const Color textDisabledLight =
-      Color(0xFF9CA3AF); // Light gray for disabled states
+  static const Color textPrimaryLight = Color(
+    0xFF1F2937,
+  ); // Dark gray for primary content
+  static const Color textSecondaryLight = Color(
+    0xFF6B7280,
+  ); // Medium gray for supporting info
+  static const Color textDisabledLight = Color(
+    0xFF9CA3AF,
+  ); // Light gray for disabled states
 
-  static const Color textPrimaryDark =
-      Color(0xFFF8FAFC); // Light text for dark mode
-  static const Color textSecondaryDark =
-      Color(0xFFCBD5E1); // Medium light for supporting info
-  static const Color textDisabledDark =
-      Color(0xFF64748B); // Medium gray for disabled states
+  static const Color textPrimaryDark = Color(
+    0xFFF8FAFC,
+  ); // Light text for dark mode
+  static const Color textSecondaryDark = Color(
+    0xFFCBD5E1,
+  ); // Medium light for supporting info
+  static const Color textDisabledDark = Color(
+    0xFF64748B,
+  ); // Medium gray for disabled states
 
   /// Light theme implementing Arctic Clarity with Fluid Minimalism
   static ThemeData lightTheme = ThemeData(
@@ -116,7 +134,7 @@ class AppTheme {
     dividerColor: borderLight,
 
     // AppBar theme for clean headers
-    appBarTheme: AppBarTheme(
+    appBarTheme: AppBarThemeData(
       backgroundColor: backgroundLight,
       foregroundColor: textPrimaryLight,
       elevation: 0,
@@ -134,13 +152,11 @@ class AppTheme {
     ),
 
     // Card theme with subtle elevation
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: cardLight,
       elevation: 2,
       shadowColor: shadowLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
 
@@ -169,9 +185,7 @@ class AppTheme {
       focusElevation: 8,
       hoverElevation: 8,
       highlightElevation: 12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
     ),
 
     // Button themes for consistent interaction patterns
@@ -213,9 +227,7 @@ class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: primaryLight,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w500,
@@ -228,7 +240,7 @@ class AppTheme {
     textTheme: _buildTextTheme(isLight: true),
 
     // Input decoration for forms and data entry
-    inputDecorationTheme: InputDecorationTheme(
+    inputDecorationTheme: InputDecorationThemeData(
       fillColor: surfaceLight,
       filled: true,
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -294,9 +306,7 @@ class AppTheme {
       }),
       checkColor: WidgetStateProperty.all(onPrimaryLight),
       side: BorderSide(color: borderLight, width: 2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
     ),
 
     radioTheme: RadioThemeData(
@@ -323,7 +333,7 @@ class AppTheme {
       thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
     ),
 
-    tabBarTheme: TabBarTheme(
+    tabBarTheme: TabBarThemeData(
       labelColor: primaryLight,
       unselectedLabelColor: textSecondaryLight,
       indicatorColor: primaryLight,
@@ -362,11 +372,10 @@ class AppTheme {
       ),
       actionTextColor: accentLight,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 6,
-    ), dialogTheme: DialogThemeData(backgroundColor: dialogLight),
+    ),
+    dialogTheme: DialogThemeData(backgroundColor: dialogLight),
   );
 
   /// Dark theme maintaining Arctic Clarity principles for low-light conditions
@@ -402,7 +411,7 @@ class AppTheme {
     scaffoldBackgroundColor: backgroundDark,
     cardColor: cardDark,
     dividerColor: borderDark,
-    appBarTheme: AppBarTheme(
+    appBarTheme: AppBarThemeData(
       backgroundColor: backgroundDark,
       foregroundColor: textPrimaryDark,
       elevation: 0,
@@ -418,13 +427,11 @@ class AppTheme {
       iconTheme: IconThemeData(color: textPrimaryDark),
       actionsIconTheme: IconThemeData(color: textPrimaryDark),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: cardDark,
       elevation: 2,
       shadowColor: shadowDark,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
@@ -449,9 +456,7 @@ class AppTheme {
       focusElevation: 8,
       hoverElevation: 8,
       highlightElevation: 12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -489,9 +494,7 @@ class AppTheme {
       style: TextButton.styleFrom(
         foregroundColor: primaryDark,
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
         textStyle: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w500,
@@ -500,7 +503,7 @@ class AppTheme {
       ),
     ),
     textTheme: _buildTextTheme(isLight: false),
-    inputDecorationTheme: InputDecorationTheme(
+    inputDecorationTheme: InputDecorationThemeData(
       fillColor: surfaceDark,
       filled: true,
       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -563,9 +566,7 @@ class AppTheme {
       }),
       checkColor: WidgetStateProperty.all(onPrimaryDark),
       side: BorderSide(color: borderDark, width: 2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
     ),
     radioTheme: RadioThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
@@ -588,7 +589,7 @@ class AppTheme {
       trackHeight: 4,
       thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8),
     ),
-    tabBarTheme: TabBarTheme(
+    tabBarTheme: TabBarThemeData(
       labelColor: primaryDark,
       unselectedLabelColor: textSecondaryDark,
       indicatorColor: primaryDark,
@@ -625,19 +626,19 @@ class AppTheme {
       ),
       actionTextColor: accentDark,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
       elevation: 6,
-    ), dialogTheme: DialogThemeData(backgroundColor: dialogDark),
+    ),
+    dialogTheme: DialogThemeData(backgroundColor: dialogDark),
   );
 
   /// Helper method to build text theme using Inter font family
   /// Implements typography standards for headings, body text, and captions
   static TextTheme _buildTextTheme({required bool isLight}) {
     final Color textPrimary = isLight ? textPrimaryLight : textPrimaryDark;
-    final Color textSecondary =
-        isLight ? textSecondaryLight : textSecondaryDark;
+    final Color textSecondary = isLight
+        ? textSecondaryLight
+        : textSecondaryDark;
     final Color textDisabled = isLight ? textDisabledLight : textDisabledDark;
 
     return TextTheme(

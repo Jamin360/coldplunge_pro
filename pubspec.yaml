@@ -25,7 +25,8 @@ dependencies:
   fl_chart: ^0.65.0
   flutter_slidable: ^4.0.3
   camera: ^0.10.5+5
-  image_picker: ^1.0.4
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
   permission_handler: ^11.3.1
   record: ^6.0.0
   file_picker: ^8.1.7

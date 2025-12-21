@@ -29,14 +29,15 @@ class WeatherService {
 
       return {
         'temperature': (weatherData['temperature']['degrees'] as num).round(),
-        'feelsLike':
-            (weatherData['feelsLikeTemperature']['degrees'] as num).round(),
+        'feelsLike': (weatherData['feelsLikeTemperature']['degrees'] as num)
+            .round(),
         'humidity': weatherData['relativeHumidity'],
         'condition': _getWeatherCondition(weatherData['weatherCondition']),
         'location': locationName,
         'windSpeed': weatherData['wind']['speed']['value'],
         'pressure': weatherData['airPressure']['meanSeaLevelMillibars'],
-        'visibility': weatherData['visibility']['distance'] *
+        'visibility':
+            weatherData['visibility']['distance'] *
             1000, // Convert km to meters
         'uvIndex': weatherData['uvIndex'] ?? 0,
         'dewPoint': (weatherData['dewPoint']['degrees'] as num).round(),
@@ -93,22 +94,22 @@ class WeatherService {
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
 
-        // Extract city with safer null handling
-        String? city = placemark.locality;
-        if (city == null || city.isEmpty) {
-          city = placemark.subAdministrativeArea;
-        }
-        if (city == null || city.isEmpty) {
-          city = placemark.administrativeArea;
-        }
-        if (city == null || city.isEmpty) {
+        // Extract city with safer null handling - use non-nullable String
+        String city =
+            placemark.locality ??
+            placemark.subAdministrativeArea ??
+            placemark.administrativeArea ??
+            'Unknown Location';
+
+        // Remove empty string check since we now have a guaranteed non-null value
+        if (city.isEmpty) {
           city = 'Unknown Location';
         }
 
         // Extract state with null safety
         String state = placemark.administrativeArea ?? '';
 
-        // Format location string
+        // Format location string - city is now guaranteed non-null
         if (state.isNotEmpty && city != state) {
           return '$city, $state';
         }
@@ -123,7 +124,8 @@ class WeatherService {
   Future<Map<String, dynamic>?> _fetchWeatherData(Position position) async {
     if (_apiKey.isEmpty || _apiKey == 'your-google-api-key-here') {
       print(
-          'Google API key not configured. Please add GOOGLE_API_KEY to environment variables.');
+        'Google API key not configured. Please add GOOGLE_API_KEY to environment variables.',
+      );
       return null;
     }
 
@@ -132,9 +134,7 @@ class WeatherService {
         '$_baseUrl?key=$_apiKey&location.latitude=${position.latitude}&location.longitude=${position.longitude}&unitsSystem=METRIC',
       );
 
-      final response = await http.get(url).timeout(
-            const Duration(seconds: 10),
-          );
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         return json.decode(response.body);

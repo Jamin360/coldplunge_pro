@@ -83,8 +83,9 @@ class CommunityService {
   /// Create a new community post
   Future<Map<String, dynamic>> createPost({
     required String content,
-    required String activityType,
     String? imageUrl,
+    String? photoPath,
+    String activityType = 'plunge',
     String? relatedSessionId,
     String? relatedChallengeId,
   }) async {
@@ -99,6 +100,7 @@ class CommunityService {
         'content': content,
         'activity_type': activityType,
         'image_url': imageUrl,
+        'photo_path': photoPath,
         'related_session_id': relatedSessionId,
         'related_challenge_id': relatedChallengeId,
         'created_at': DateTime.now().toIso8601String(),

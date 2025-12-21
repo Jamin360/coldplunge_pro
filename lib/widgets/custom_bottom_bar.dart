@@ -42,7 +42,7 @@ class CustomBottomBar extends StatelessWidget {
                 icon: Icons.home_outlined,
                 activeIcon: Icons.home,
                 label: 'Home',
-                route: '/home-dashboard',
+                route: '/home',
               ),
               _buildNavItem(
                 context: context,
@@ -55,14 +55,6 @@ class CustomBottomBar extends StatelessWidget {
               _buildNavItem(
                 context: context,
                 index: 2,
-                icon: Icons.people_outline,
-                activeIcon: Icons.people,
-                label: 'Community',
-                route: '/community-feed',
-              ),
-              _buildNavItem(
-                context: context,
-                index: 3,
                 icon: Icons.emoji_events_outlined,
                 activeIcon: Icons.emoji_events,
                 label: 'Challenges',
@@ -70,7 +62,7 @@ class CustomBottomBar extends StatelessWidget {
               ),
               _buildNavItem(
                 context: context,
-                index: 4,
+                index: 3,
                 icon: Icons.analytics_outlined,
                 activeIcon: Icons.analytics,
                 label: 'Analytics',
@@ -103,7 +95,13 @@ class CustomBottomBar extends StatelessWidget {
 
           if (!isSelected) {
             onTap(index);
-            Navigator.pushNamed(context, route);
+            // Use pushNamedAndRemoveUntil to clear navigation stack
+            // This ensures tab bar buttons override any other navigation states
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              route,
+              (route) => false, // Remove all previous routes
+            );
           }
         },
         child: AnimatedContainer(

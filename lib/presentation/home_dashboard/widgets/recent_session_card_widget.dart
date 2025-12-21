@@ -169,7 +169,7 @@ class RecentSessionCardWidget extends StatelessWidget {
                     child: _buildStatItem(
                       context,
                       'Duration',
-                      '${session['duration'] ?? 0}s',
+                      _formatDuration((session['duration'] ?? 0) as int),
                       'timer',
                     ),
                   ),
@@ -182,7 +182,7 @@ class RecentSessionCardWidget extends StatelessWidget {
                     child: _buildStatItem(
                       context,
                       'Temperature',
-                      '${session['temperature'] ?? 0}°C',
+                      '${session['temperature'] ?? 0}°F',
                       'thermostat',
                     ),
                   ),
@@ -284,6 +284,16 @@ class RecentSessionCardWidget extends StatelessWidget {
       return '${difference} days ago';
     } else {
       return '${date.month}/${date.day}/${date.year}';
+    }
+  }
+
+  String _formatDuration(int seconds) {
+    if (seconds < 60) {
+      return '${seconds}s';
+    } else {
+      final minutes = seconds ~/ 60;
+      final remainingSeconds = seconds % 60;
+      return '${minutes}m ${remainingSeconds}s';
     }
   }
 

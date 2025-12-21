@@ -6,7 +6,7 @@ import '../presentation/home_dashboard/home_dashboard.dart';
 import '../presentation/plunge_timer/plunge_timer.dart';
 import '../presentation/personal_analytics/personal_analytics.dart';
 import '../presentation/challenges/challenges.dart';
-import '../presentation/community_feed/community_feed.dart';
+import '../presentation/session_history/session_history.dart';
 
 class AppRoutes {
   // Route constants
@@ -17,7 +17,7 @@ class AppRoutes {
   static const String plungeTimer = '/plunge-timer';
   static const String personalAnalytics = '/personal-analytics';
   static const String challenges = '/challenges';
-  static const String communityFeed = '/community-feed';
+  static const String sessionHistory = '/session-history';
 
   // Initial route
   static const String initial = splashScreen;
@@ -32,7 +32,7 @@ class AppRoutes {
       plungeTimer: (context) => const PlungeTimer(),
       personalAnalytics: (context) => const PersonalAnalytics(),
       challenges: (context) => const Challenges(),
-      communityFeed: (context) => const CommunityFeed(),
+      sessionHistory: (context) => const SessionHistory(),
     };
   }
 }

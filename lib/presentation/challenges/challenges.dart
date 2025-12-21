@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_bar.dart';
+import '../../widgets/custom_icon_widget.dart';
+import '../../widgets/custom_image_widget.dart';
 import './widgets/active_challenge_widget.dart';
 import './widgets/challenge_card_widget.dart';
 import './widgets/challenge_filter_widget.dart';
@@ -17,7 +20,7 @@ class Challenges extends StatefulWidget {
 }
 
 class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
-  int _currentBottomIndex = 3;
+  int _currentBottomIndex = 2;
   String _selectedFilter = 'all';
   late TabController _tabController;
 
@@ -44,8 +47,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       'progress': 0.0,
       'isActive': false,
       'isJoined': false,
-      'image':
-          'https://images.unsplash.com/photo-1677774362179-22ee6d120308',
+      'image': 'https://images.unsplash.com/photo-1677774362179-22ee6d120308',
       'semanticLabel':
           'Person in winter clothing standing in snowy mountain landscape with frozen lake',
     },
@@ -60,8 +62,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       'progress': 85.0,
       'isActive': true,
       'isJoined': true,
-      'image':
-          'https://images.unsplash.com/photo-1635214831754-b0e2b1292a82',
+      'image': 'https://images.unsplash.com/photo-1635214831754-b0e2b1292a82',
       'semanticLabel':
           'Modern bathroom with white bathtub filled with ice and water for cold therapy',
     },
@@ -76,8 +77,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       'progress': 45.0,
       'isActive': false,
       'isJoined': true,
-      'image':
-          'https://images.unsplash.com/photo-1615486511473-4e83867c9516',
+      'image': 'https://images.unsplash.com/photo-1615486511473-4e83867c9516',
       'semanticLabel':
           'Digital thermometer showing cold temperature reading in ice water bath',
     },
@@ -92,8 +92,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       'progress': 0.0,
       'isActive': false,
       'isJoined': false,
-      'image':
-          'https://images.unsplash.com/photo-1619707284867-922f30e176e5',
+      'image': 'https://images.unsplash.com/photo-1619707284867-922f30e176e5',
       'semanticLabel':
           'Group of people in winter gear preparing for outdoor cold water swimming event',
     },
@@ -108,8 +107,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       'progress': 100.0,
       'isActive': false,
       'isJoined': true,
-      'image':
-          'https://images.unsplash.com/photo-1643184012410-0d0c9070e575',
+      'image': 'https://images.unsplash.com/photo-1643184012410-0d0c9070e575',
       'semanticLabel':
           'Person meditating peacefully beside natural cold water spring in forest setting',
     },
@@ -188,7 +186,8 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       case 'upcoming':
         return _allChallenges
             .where(
-                (c) => !(c['isJoined'] as bool) && c['timeLeft'] != 'Completed')
+              (c) => !(c['isJoined'] as bool) && c['timeLeft'] != 'Completed',
+            )
             .toList();
       case 'completed':
         return _allChallenges
@@ -236,8 +235,9 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               color: colorScheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: colorScheme.outline.withValues(alpha: 0.2),
+              ),
             ),
             child: TabBar(
               controller: _tabController,
@@ -267,10 +267,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildChallengesTab(),
-                _buildLeaderboardTab(),
-              ],
+              children: [_buildChallengesTab(), _buildLeaderboardTab()],
             ),
           ),
         ],
@@ -313,20 +310,20 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                   _selectedFilter == 'all'
                       ? 'All Challenges'
                       : _selectedFilter == 'active'
-                          ? 'Active Challenges'
-                          : _selectedFilter == 'upcoming'
-                              ? 'Upcoming Challenges'
-                              : 'Completed Challenges',
+                      ? 'Active Challenges'
+                      : _selectedFilter == 'upcoming'
+                      ? 'Upcoming Challenges'
+                      : 'Completed Challenges',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const Spacer(),
                 Text(
                   '${_filteredChallenges.length} challenges',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -487,7 +484,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                         fit: BoxFit.cover,
                         semanticLabel:
                             selectedChallenge['semanticLabel'] as String? ??
-                                'Challenge image',
+                            'Challenge image',
                       ),
                     ),
                     SizedBox(height: 3.h),
