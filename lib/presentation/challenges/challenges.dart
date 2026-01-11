@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../theme/app_theme.dart';
+import '../../services/challenge_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_bar.dart';
-import '../../widgets/custom_icon_widget.dart';
-import '../../widgets/custom_image_widget.dart';
 import './widgets/active_challenge_widget.dart';
 import './widgets/challenge_card_widget.dart';
 import './widgets/challenge_filter_widget.dart';
@@ -24,153 +22,95 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   String _selectedFilter = 'all';
   late TabController _tabController;
 
-  // Mock data for active challenge
-  final Map<String, dynamic>? _activeChallenge = {
-    'title': '7-Day Cold Plunge Streak',
-    'progress': 71.0,
-    'currentStreak': 5,
-    'targetStreak': 7,
-    'timeLeft': '2 days',
-    'leaderboardPosition': 3,
-  };
+  final _challengeService = ChallengeService.instance;
 
-  // Mock data for available challenges
-  final List<Map<String, dynamic>> _allChallenges = [
-    {
-      'id': '1',
-      'title': 'Arctic Warrior Challenge',
-      'description':
-          'Complete 30 cold plunges in 30 days with temperatures below 50°F',
-      'difficulty': 'Hard',
-      'participants': 1247,
-      'timeLeft': '12 days',
-      'progress': 0.0,
-      'isActive': false,
-      'isJoined': false,
-      'image': 'https://images.unsplash.com/photo-1677774362179-22ee6d120308',
-      'semanticLabel':
-          'Person in winter clothing standing in snowy mountain landscape with frozen lake',
-    },
-    {
-      'id': '2',
-      'title': 'Ice Bath Beginner',
-      'description':
-          'Start your cold therapy journey with 7 consecutive days of ice baths',
-      'difficulty': 'Easy',
-      'participants': 3421,
-      'timeLeft': '5 days',
-      'progress': 85.0,
-      'isActive': true,
-      'isJoined': true,
-      'image': 'https://images.unsplash.com/photo-1635214831754-b0e2b1292a82',
-      'semanticLabel':
-          'Modern bathroom with white bathtub filled with ice and water for cold therapy',
-    },
-    {
-      'id': '3',
-      'title': 'Temperature Drop Master',
-      'description':
-          'Gradually decrease water temperature by 5°F each week for 4 weeks',
-      'difficulty': 'Medium',
-      'participants': 892,
-      'timeLeft': '18 days',
-      'progress': 45.0,
-      'isActive': false,
-      'isJoined': true,
-      'image': 'https://images.unsplash.com/photo-1615486511473-4e83867c9516',
-      'semanticLabel':
-          'Digital thermometer showing cold temperature reading in ice water bath',
-    },
-    {
-      'id': '4',
-      'title': 'Winter Solstice Special',
-      'description':
-          'Join thousands in a global cold plunge event this winter solstice',
-      'difficulty': 'Medium',
-      'participants': 5678,
-      'timeLeft': '45 days',
-      'progress': 0.0,
-      'isActive': false,
-      'isJoined': false,
-      'image': 'https://images.unsplash.com/photo-1619707284867-922f30e176e5',
-      'semanticLabel':
-          'Group of people in winter gear preparing for outdoor cold water swimming event',
-    },
-    {
-      'id': '5',
-      'title': 'Mindful Cold Exposure',
-      'description':
-          'Combine meditation with cold therapy for enhanced mental resilience',
-      'difficulty': 'Easy',
-      'participants': 2156,
-      'timeLeft': 'Completed',
-      'progress': 100.0,
-      'isActive': false,
-      'isJoined': true,
-      'image': 'https://images.unsplash.com/photo-1643184012410-0d0c9070e575',
-      'semanticLabel':
-          'Person meditating peacefully beside natural cold water spring in forest setting',
-    },
-  ];
+  bool _isLoading = true;
+  String? _error;
 
-  // Mock leaderboard data
-  final List<Map<String, dynamic>> _leaderboardData = [
-    {
-      'name': 'Sarah Chen',
-      'score': 28,
-      'avatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_19dc77a7e-1762274545448.png',
-      'avatarSemanticLabel':
-          'Professional headshot of Asian woman with long black hair smiling',
-      'isCurrentUser': false,
-      'isFriend': true,
-    },
-    {
-      'name': 'Marcus Johnson',
-      'score': 25,
-      'avatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1f8f2e5bd-1762249046974.png',
-      'avatarSemanticLabel':
-          'Professional headshot of African American man with beard in business attire',
-      'isCurrentUser': false,
-      'isFriend': false,
-    },
-    {
-      'name': 'You',
-      'score': 23,
-      'avatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1584b53a9-1762273471611.png',
-      'avatarSemanticLabel':
-          'Professional headshot of young man with brown hair in casual shirt',
-      'isCurrentUser': true,
-      'isFriend': false,
-    },
-    {
-      'name': 'Emma Rodriguez',
-      'score': 21,
-      'avatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_1beb9fc75-1762273370028.png',
-      'avatarSemanticLabel':
-          'Professional headshot of Hispanic woman with curly hair smiling',
-      'isCurrentUser': false,
-      'isFriend': true,
-    },
-    {
-      'name': 'David Kim',
-      'score': 19,
-      'avatar':
-          'https://img.rocket.new/generatedImages/rocket_gen_img_117f45e37-1762273829255.png',
-      'avatarSemanticLabel':
-          'Professional headshot of Asian man with glasses in formal wear',
-      'isCurrentUser': false,
-      'isFriend': false,
-    },
-  ];
+  List<Map<String, dynamic>> _allChallenges = [];
+  List<Map<String, dynamic>> _userChallenges = [];
+  Map<String, dynamic>? _activeChallenge;
+  List<Map<String, dynamic>> _leaderboardData = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // Load all challenges and user challenges in parallel
+      final results = await Future.wait([
+        _challengeService.getActiveChallenges(),
+        _challengeService.getUserActiveChallenges(),
+        _challengeService.getGlobalLeaderboard(),
+      ]);
+
+      final allChallenges = results[0];
+      final userChallenges = results[1];
+      final leaderboard = results[2];
+
+      setState(() {
+        _allChallenges = allChallenges;
+        _userChallenges = userChallenges;
+        _leaderboardData = leaderboard;
+
+        // Find active challenge (first user challenge with highest progress)
+        if (userChallenges.isNotEmpty) {
+          final activeUserChallenge = userChallenges.first;
+          final challengeData =
+              activeUserChallenge['challenges'] as Map<String, dynamic>;
+
+          final progress =
+              (activeUserChallenge['progress'] as num?)?.toDouble() ?? 0.0;
+          final targetValue = challengeData['target_value'] as int? ?? 1;
+          final currentValue = (progress * targetValue / 100).round();
+          final daysLeft = _calculateDaysLeft(challengeData['end_date']);
+
+          _activeChallenge = {
+            'id': challengeData['id'],
+            'title': challengeData['title'],
+            'progress': progress,
+            'currentStreak': currentValue,
+            'targetStreak': targetValue,
+            'timeLeft': daysLeft,
+            'description': challengeData['description'],
+            'image': challengeData['image_url'],
+          };
+        }
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to load challenges: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _calculateDaysLeft(String? endDateStr) {
+    if (endDateStr == null) return 'No deadline';
+
+    try {
+      final endDate = DateTime.parse(endDateStr);
+      final now = DateTime.now();
+      final difference = endDate.difference(now).inDays;
+
+      if (difference < 0) return 'Expired';
+      if (difference == 0) return 'Today';
+      if (difference == 1) return '1 day';
+      return '$difference days';
+    } catch (e) {
+      return 'Unknown';
+    }
   }
 
   @override
@@ -180,21 +120,80 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   }
 
   List<Map<String, dynamic>> get _filteredChallenges {
+    final userChallengeIds = _userChallenges
+        .map((uc) => (uc['challenges'] as Map<String, dynamic>)['id'])
+        .toSet();
+
     switch (_selectedFilter) {
       case 'active':
-        return _allChallenges.where((c) => c['isActive'] as bool).toList();
+        return _userChallenges
+            .where((uc) => !(uc['is_completed'] as bool? ?? false))
+            .map((uc) {
+          final challenge = uc['challenges'] as Map<String, dynamic>;
+          return {
+            ...challenge,
+            'progress': (uc['progress'] as num?)?.toDouble() ?? 0.0,
+            'isJoined': true,
+            'isActive': true,
+            'participants': challenge['participants_count'] ?? 0,
+            'timeLeft': _calculateDaysLeft(challenge['end_date']),
+          };
+        }).toList();
+
       case 'upcoming':
         return _allChallenges
-            .where(
-              (c) => !(c['isJoined'] as bool) && c['timeLeft'] != 'Completed',
-            )
+            .where((c) => !userChallengeIds.contains(c['id']))
+            .map((c) => {
+                  ...c,
+                  'isJoined': false,
+                  'isActive': false,
+                  'progress': 0.0,
+                  'participants': c['participants_count'] ?? 0,
+                  'timeLeft': _calculateDaysLeft(c['end_date']),
+                })
             .toList();
+
       case 'completed':
-        return _allChallenges
-            .where((c) => c['timeLeft'] == 'Completed')
+        return _userChallenges
+            .where((uc) => uc['is_completed'] as bool? ?? false)
+            .map((uc) {
+          final challenge = uc['challenges'] as Map<String, dynamic>;
+          return {
+            ...challenge,
+            'progress': 100.0,
+            'isJoined': true,
+            'isActive': false,
+            'participants': challenge['participants_count'] ?? 0,
+            'timeLeft': 'Completed',
+          };
+        }).toList();
+
+      default: // 'all'
+        final joined = _userChallenges.map((uc) {
+          final challenge = uc['challenges'] as Map<String, dynamic>;
+          return {
+            ...challenge,
+            'progress': (uc['progress'] as num?)?.toDouble() ?? 0.0,
+            'isJoined': true,
+            'isActive': !(uc['is_completed'] as bool? ?? false),
+            'participants': challenge['participants_count'] ?? 0,
+            'timeLeft': _calculateDaysLeft(challenge['end_date']),
+          };
+        }).toList();
+
+        final notJoined = _allChallenges
+            .where((c) => !userChallengeIds.contains(c['id']))
+            .map((c) => {
+                  ...c,
+                  'isJoined': false,
+                  'isActive': false,
+                  'progress': 0.0,
+                  'participants': c['participants_count'] ?? 0,
+                  'timeLeft': _calculateDaysLeft(c['end_date']),
+                })
             .toList();
-      default:
-        return _allChallenges;
+
+        return [...joined, ...notJoined];
     }
   }
 
@@ -227,51 +226,59 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Tab Bar
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4.w),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.outline.withValues(alpha: 0.2),
-              ),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Challenges'),
-                Tab(text: 'Leaderboard'),
-              ],
-              labelStyle: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: theme.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w400,
-              ),
-              indicator: BoxDecoration(
-                color: colorScheme.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              padding: EdgeInsets.all(1.w),
-            ),
-          ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _buildErrorState()
+              : Column(
+                  children: [
+                    // Tab Bar
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 4.w),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        tabs: const [
+                          Tab(text: 'Challenges'),
+                          Tab(text: 'Leaderboard'),
+                        ],
+                        labelStyle: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        unselectedLabelStyle:
+                            theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w400,
+                        ),
+                        indicator: BoxDecoration(
+                          color: colorScheme.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        padding: EdgeInsets.all(1.w),
+                      ),
+                    ),
 
-          SizedBox(height: 2.h),
+                    SizedBox(height: 2.h),
 
-          // Tab Content
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [_buildChallengesTab(), _buildLeaderboardTab()],
-            ),
-          ),
-        ],
-      ),
+                    // Tab Content
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildChallengesTab(),
+                          _buildLeaderboardTab()
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
       bottomNavigationBar: CustomBottomBar(
         currentIndex: _currentBottomIndex,
         onTap: (index) => setState(() => _currentBottomIndex = index),
@@ -279,94 +286,148 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildChallengesTab() {
-    return SingleChildScrollView(
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Active Challenge Hero Section
-          ActiveChallengeWidget(
-            activeChallenge: _activeChallenge,
-            onTap: _showChallengeDetails,
+          CustomIconWidget(
+            iconName: 'error_outline',
+            size: 64,
+            color: colorScheme.error,
           ),
-
-          SizedBox(height: 3.h),
-
-          // Filter Section
-          ChallengeFilterWidget(
-            selectedFilter: _selectedFilter,
-            onFilterChanged: (filter) =>
-                setState(() => _selectedFilter = filter),
-          ),
-
           SizedBox(height: 2.h),
-
-          // Available Challenges Section
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 4.w),
-            child: Row(
-              children: [
-                Text(
-                  _selectedFilter == 'all'
-                      ? 'All Challenges'
-                      : _selectedFilter == 'active'
-                      ? 'Active Challenges'
-                      : _selectedFilter == 'upcoming'
-                      ? 'Upcoming Challenges'
-                      : 'Completed Challenges',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${_filteredChallenges.length} challenges',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+          Text(
+            'Failed to load challenges',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
-
-          SizedBox(height: 2.h),
-
-          // Challenges List
-          _filteredChallenges.isEmpty
-              ? _buildEmptyState()
-              : SizedBox(
-                  height: 55.h,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.only(left: 4.w),
-                    itemCount: _filteredChallenges.length,
-                    itemBuilder: (context, index) {
-                      final challenge = _filteredChallenges[index];
-                      return ChallengeCardWidget(
-                        challenge: challenge,
-                        onTap: () => _showChallengeDetails(challenge),
-                      );
-                    },
-                  ),
-                ),
-
-          SizedBox(height: 4.h),
+          SizedBox(height: 1.h),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            child: Text(
+              _error ?? 'Unknown error occurred',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          SizedBox(height: 3.h),
+          ElevatedButton(
+            onPressed: _loadData,
+            child: const Text('Retry'),
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildChallengesTab() {
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Active Challenge Hero Section
+            ActiveChallengeWidget(
+              activeChallenge: _activeChallenge,
+              onTap: _activeChallenge != null
+                  ? () => _showChallengeDetails(_activeChallenge)
+                  : null,
+            ),
+
+            SizedBox(height: 3.h),
+
+            // Filter Section
+            ChallengeFilterWidget(
+              selectedFilter: _selectedFilter,
+              onFilterChanged: (filter) =>
+                  setState(() => _selectedFilter = filter),
+            ),
+
+            SizedBox(height: 2.h),
+
+            // Available Challenges Section
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.w),
+              child: Row(
+                children: [
+                  Text(
+                    _selectedFilter == 'all'
+                        ? 'All Challenges'
+                        : _selectedFilter == 'active'
+                            ? 'Active Challenges'
+                            : _selectedFilter == 'upcoming'
+                                ? 'Upcoming Challenges'
+                                : 'Completed Challenges',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${_filteredChallenges.length} challenges',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 2.h),
+
+            // Challenges List
+            _filteredChallenges.isEmpty
+                ? _buildEmptyState()
+                : SizedBox(
+                    height: 55.h,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.only(left: 4.w),
+                      itemCount: _filteredChallenges.length,
+                      itemBuilder: (context, index) {
+                        final challenge = _filteredChallenges[index];
+                        return ChallengeCardWidget(
+                          challenge: challenge,
+                          onTap: () => _showChallengeDetails(challenge),
+                        );
+                      },
+                    ),
+                  ),
+
+            SizedBox(height: 4.h),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLeaderboardTab() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          SizedBox(height: 2.h),
-          LeaderboardWidget(
-            leaderboardData: _leaderboardData,
-            currentUserPosition: 3,
-          ),
-          SizedBox(height: 4.h),
-        ],
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            SizedBox(height: 2.h),
+            LeaderboardWidget(
+              leaderboardData: _leaderboardData,
+              currentUserPosition: _leaderboardData.indexWhere(
+                    (entry) => entry['isCurrentUser'] == true,
+                  ) +
+                  1,
+            ),
+            SizedBox(height: 4.h),
+          ],
+        ),
       ),
     );
   }
@@ -484,7 +545,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                         fit: BoxFit.cover,
                         semanticLabel:
                             selectedChallenge['semanticLabel'] as String? ??
-                            'Challenge image',
+                                'Challenge image',
                       ),
                     ),
                     SizedBox(height: 3.h),
@@ -672,15 +733,33 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
     );
   }
 
-  void _joinChallenge(Map<String, dynamic> challenge) {
-    // Simulate joining challenge
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Successfully joined "${challenge['title']}"!'),
-        backgroundColor: AppTheme.successLight,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _joinChallenge(Map<String, dynamic> challenge) async {
+    try {
+      await _challengeService.joinChallenge(challenge['id'] as String);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully joined "${challenge['title']}"!'),
+            backgroundColor: AppTheme.successLight,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Reload data to show updated challenges
+        await _loadData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to join challenge: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _showCreateChallengeDialog() {
