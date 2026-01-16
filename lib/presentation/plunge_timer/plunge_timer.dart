@@ -360,7 +360,7 @@ class _PlungeTimerState extends State<PlungeTimer>
             Text('Session saved! 🎉'),
           ],
         ),
-        backgroundColor: AppTheme.successLight,
+        backgroundColor: const Color(0xFF14B8A6), // Success teal
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),
@@ -377,7 +377,7 @@ class _PlungeTimerState extends State<PlungeTimer>
             Expanded(child: Text('Save failed. Retrying...')),
           ],
         ),
-        backgroundColor: AppTheme.errorLight,
+        backgroundColor: AppTheme.errorLight, // Keep error red
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
         action: SnackBarAction(
@@ -399,7 +399,7 @@ class _PlungeTimerState extends State<PlungeTimer>
             Text('Session completed! 🎉'),
           ],
         ),
-        backgroundColor: AppTheme.successLight,
+        backgroundColor: const Color(0xFF14B8A6), // Success teal
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
       ),

@@ -18,83 +18,45 @@ class SessionHistoryCardWidget extends StatelessWidget {
   String _formatDate(String dateString) {
     final date = DateTime.parse(dateString);
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final difference = now.difference(date).inDays;
 
-    if (difference.inDays == 0) {
+    if (difference == 0) {
       return 'Today';
-    } else if (difference.inDays == 1) {
-      return '1 day ago';
-    } else if (difference.inDays < 30) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays < 365) {
-      final months = difference.inDays ~/ 30;
-      return '$months ${months == 1 ? 'month' : 'months'} ago';
+    } else if (difference == 1) {
+      return 'Yesterday';
+    } else if (difference < 7) {
+      return '${difference} days ago';
     } else {
-      final years = difference.inDays ~/ 365;
-      return '$years ${years == 1 ? 'year' : 'years'} ago';
+      return '${date.month}/${date.day}/${date.year}';
     }
-  }
-
-  String _formatTime(String dateString) {
-    final date = DateTime.parse(dateString);
-    final hour = date.hour > 12 ? date.hour - 12 : date.hour;
-    final minute = date.minute.toString().padLeft(2, '0');
-    final period = date.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$minute $period';
   }
 
   String _formatDuration(int seconds) {
     if (seconds < 60) {
-      return '${seconds}s Duration';
+      return '${seconds}s';
     } else {
       final minutes = seconds ~/ 60;
       final remainingSeconds = seconds % 60;
-      if (remainingSeconds == 0) {
-        return '${minutes}m Duration';
-      }
-      return '${minutes}m ${remainingSeconds}s Duration';
-    }
-  }
-
-  IconData _getMoodIcon(String? mood) {
-    switch (mood?.toLowerCase()) {
-      case 'euphoric':
-        return Icons.sentiment_very_satisfied;
-      case 'calm':
-      case 'focused':
-        return Icons.sentiment_satisfied;
-      case 'energized':
-        return Icons.bolt;
-      case 'neutral':
-        return Icons.sentiment_neutral;
-      case 'tired':
-      case 'stressed':
-      case 'anxious':
-        return Icons.sentiment_dissatisfied;
-      default:
-        return Icons.mood;
+      return '${minutes}m ${remainingSeconds}s';
     }
   }
 
   Color _getMoodColor(String? mood) {
     switch (mood?.toLowerCase()) {
       case 'euphoric':
-        return const Color(0xFF10B981); // Green
       case 'energized':
-        return const Color(0xFF10B981); // Green
-      case 'calm':
-        return const Color(0xFF3B82F6); // Blue
+        return AppTheme.successLight;
       case 'focused':
-        return const Color(0xFF8B5CF6); // Purple
+      case 'calm':
+        return AppTheme.primaryLight;
       case 'neutral':
-        return const Color(0xFF6B7280); // Gray
+        return AppTheme.warningLight;
       case 'tired':
-        return const Color(0xFFF59E0B); // Orange
       case 'stressed':
       case 'anxious':
-        return const Color(0xFFEF4444); // Red
+        return AppTheme.errorLight;
       default:
-        return const Color(0xFF6B7280); // Gray
+        return AppTheme.primaryLight;
     }
   }
 
@@ -108,6 +70,7 @@ class SessionHistoryCardWidget extends StatelessWidget {
     final temperature = session['temperature'] as int;
     final createdAt = session['created_at'] as String;
     final postMood = session['post_mood'] as String?;
+    final notes = session['notes'] as String?;
 
     return Dismissible(
       key: Key(session['id'] as String),
@@ -116,7 +79,7 @@ class SessionHistoryCardWidget extends StatelessWidget {
         margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
         decoration: BoxDecoration(
           color: AppTheme.errorLight,
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(16.0),
         ),
         alignment: Alignment.centerRight,
         padding: EdgeInsets.only(right: 4.w),
@@ -161,123 +124,180 @@ class SessionHistoryCardWidget extends StatelessWidget {
           padding: EdgeInsets.all(4.w),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12.0),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 10,
+                color: colorScheme.shadow.withValues(alpha: 0.1),
+                blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
+            border: Border.all(
+              color: colorScheme.outline.withValues(alpha: 0.1),
+              width: 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: Location with icon and mood badge
+              // Top row: Snowflake icon, location/date, and mood badge
               Row(
                 children: [
-                  CustomIconWidget(
-                    iconName: 'ac_unit',
-                    color: AppTheme.accentLight,
-                    size: 20,
-                  ),
-                  SizedBox(width: 2.w),
-                  Expanded(
-                    child: Text(
-                      location,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: const Color(0xFF111827),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16.sp,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                  // Snowflake icon in blue circular badge
+                  Container(
+                    padding: EdgeInsets.all(2.w),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: CustomIconWidget(
+                      iconName: 'ac_unit',
+                      color: colorScheme.primary,
+                      size: 20,
                     ),
                   ),
-                  if (postMood != null) ...[
+                  SizedBox(width: 3.w),
+                  // Location name and date
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          location,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _formatDate(createdAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Mood badge in top-right
+                  if (postMood != null)
                     Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 3.w,
-                        vertical: 0.6.h,
+                        horizontal: 2.w,
+                        vertical: 1.h,
                       ),
                       decoration: BoxDecoration(
-                        color: _getMoodColor(postMood),
-                        borderRadius: BorderRadius.circular(12.0),
+                        color: _getMoodColor(postMood).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _getMoodColor(postMood).withValues(alpha: 0.3),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
-                        postMood.toLowerCase(),
+                        postMood,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
+                          color: _getMoodColor(postMood),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                  ],
                 ],
-              ),
-
-              SizedBox(height: 0.8.h),
-
-              // Timestamp
-              Text(
-                _formatDate(createdAt),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF6B7280),
-                  fontWeight: FontWeight.w400,
-                  fontSize: 13.sp,
-                ),
               ),
 
               SizedBox(height: 2.h),
 
-              // Bottom row: Duration and Temperature
+              // Duration and Temperature in two-column layout with icons above values
               Row(
                 children: [
-                  // Duration
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CustomIconWidget(
-                        iconName: 'timer',
-                        color: const Color(0xFF6B7280),
-                        size: 16,
-                      ),
-                      SizedBox(width: 1.5.w),
-                      Text(
-                        _formatDuration(duration),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF374151),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13.sp,
+                  // Duration column
+                  Expanded(
+                    child: Column(
+                      children: [
+                        CustomIconWidget(
+                          iconName: 'timer',
+                          color: colorScheme.onSurfaceVariant,
+                          size: 16,
                         ),
-                      ),
-                    ],
+                        SizedBox(height: 0.5.h),
+                        Text(
+                          _formatDuration(duration),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Duration',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-
-                  SizedBox(width: 5.w),
-
-                  // Temperature
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CustomIconWidget(
-                        iconName: 'thermostat',
-                        color: const Color(0xFF6B7280),
-                        size: 16,
-                      ),
-                      SizedBox(width: 1.5.w),
-                      Text(
-                        '$temperature°F Temperature',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF374151),
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13.sp,
+                  // Divider
+                  Container(
+                    width: 1,
+                    height: 4.h,
+                    color: colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                  // Temperature column
+                  Expanded(
+                    child: Column(
+                      children: [
+                        CustomIconWidget(
+                          iconName: 'thermostat',
+                          color: colorScheme.onSurfaceVariant,
+                          size: 16,
                         ),
-                      ),
-                    ],
+                        SizedBox(height: 0.5.h),
+                        Text(
+                          '${temperature}°F',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Temperature',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
+
+              // Notes in italic gray text at bottom if present
+              if (notes != null && notes.isNotEmpty) ...[
+                SizedBox(height: 2.h),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(3.w),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withValues(
+                      alpha: 0.3,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    notes,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

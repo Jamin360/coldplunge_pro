@@ -6,57 +6,50 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   AppTheme._();
 
-  // Arctic Clarity Color Palette - Cool-dominant with warm accent touches
-  static const Color primaryLight = Color(0xFF1E3A8A); // Deep ocean blue
-  static const Color primaryVariantLight = Color(
-    0xFF1E40AF,
-  ); // Slightly lighter ocean blue
-  static const Color secondaryLight = Color(0xFF0EA5E9); // Refreshing sky blue
-  static const Color secondaryVariantLight = Color(
-    0xFF0284C7,
-  ); // Deeper sky blue
-  static const Color accentLight = Color(
-    0xFFF59E0B,
-  ); // Warm amber for achievements
-  static const Color backgroundLight = Color(
-    0xFFFAFBFF,
-  ); // Soft off-white with blue undertone
-  static const Color surfaceLight = Color(
-    0xFFFFFFFF,
-  ); // Pure white for content cards
-  static const Color successLight = Color(
-    0xFF10B981,
-  ); // Natural green for completed sessions
-  static const Color warningLight = Color(
-    0xFFF59E0B,
-  ); // Consistent amber for alerts
-  static const Color errorLight = Color(
-    0xFFEF4444,
-  ); // Clear red for critical alerts
+  // Arctic Clarity Color Palette - Refined grounded colors
+  static const Color primaryLight =
+      Color(0xFF1E3A5A); // Navy blue for headers and primary buttons
+  static const Color primaryVariantLight =
+      Color(0xFF2C5282); // Slightly lighter navy
+  static const Color secondaryLight =
+      Color(0xFF64748B); // Slate blue for interactive elements (replaced teal)
+  static const Color secondaryVariantLight =
+      Color(0xFF475569); // Deeper slate (replaced teal)
+  static const Color accentLight =
+      Color(0xFFD97706); // Muted amber for Start Plunge button and badges
+  static const Color backgroundLight =
+      Color(0xFFF8FAFC); // Light gray for page backgrounds
+  static const Color surfaceLight =
+      Color(0xFFFFFFFF); // Pure white for content cards
+  static const Color successLight =
+      Color(0xFF22C55E); // Soft green for completion badges (replaced teal)
+  static const Color warningLight =
+      Color(0xFFD97706); // Consistent muted amber for alerts
+  static const Color errorLight =
+      Color(0xFFEF4444); // Clear red for critical alerts
   static const Color onPrimaryLight = Color(0xFFFFFFFF);
   static const Color onSecondaryLight = Color(0xFFFFFFFF);
-  static const Color onBackgroundLight = Color(
-    0xFF1F2937,
-  ); // Dark gray for primary content
-  static const Color onSurfaceLight = Color(0xFF1F2937);
+  static const Color onBackgroundLight =
+      Color(0xFF1E3A5A); // Navy for primary content
+  static const Color onSurfaceLight = Color(0xFF1E3A5A);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
-  // Dark theme variations maintaining Arctic Clarity principles
-  static const Color primaryDark = Color(
-    0xFF3B82F6,
-  ); // Brighter blue for dark mode
+  // Dark theme variations maintaining refined color principles
+  static const Color primaryDark =
+      Color(0xFF3B82F6); // Brighter blue for dark mode
   static const Color primaryVariantDark = Color(0xFF2563EB);
-  static const Color secondaryDark = Color(0xFF0EA5E9);
-  static const Color secondaryVariantDark = Color(0xFF0284C7);
-  static const Color accentDark = Color(0xFFF59E0B);
-  static const Color backgroundDark = Color(
-    0xFF0F172A,
-  ); // Deep navy for dark background
-  static const Color surfaceDark = Color(
-    0xFF1E293B,
-  ); // Elevated surface in dark mode
-  static const Color successDark = Color(0xFF10B981);
-  static const Color warningDark = Color(0xFFF59E0B);
+  static const Color secondaryDark =
+      Color(0xFF64748B); // Slate blue (replaced teal)
+  static const Color secondaryVariantDark =
+      Color(0xFF475569); // Deeper slate (replaced teal)
+  static const Color accentDark = Color(0xFFD97706);
+  static const Color backgroundDark =
+      Color(0xFF0F172A); // Deep navy for dark background
+  static const Color surfaceDark =
+      Color(0xFF1E293B); // Elevated surface in dark mode
+  static const Color successDark =
+      Color(0xFF22C55E); // Soft green (replaced teal)
+  static const Color warningDark = Color(0xFFD97706);
   static const Color errorDark = Color(0xFFEF4444);
   static const Color onPrimaryDark = Color(0xFFFFFFFF);
   static const Color onSecondaryDark = Color(0xFFFFFFFF);
@@ -79,15 +72,12 @@ class AppTheme {
   static const Color borderDark = Color(0xFF475569);
 
   // Text colors optimized for mobile readability
-  static const Color textPrimaryLight = Color(
-    0xFF1F2937,
-  ); // Dark gray for primary content
-  static const Color textSecondaryLight = Color(
-    0xFF6B7280,
-  ); // Medium gray for supporting info
-  static const Color textDisabledLight = Color(
-    0xFF9CA3AF,
-  ); // Light gray for disabled states
+  static const Color textPrimaryLight =
+      Color(0xFF1E3A5A); // Navy for primary content
+  static const Color textSecondaryLight =
+      Color(0xFF6B7280); // Medium gray for supporting info
+  static const Color textDisabledLight =
+      Color(0xFF9CA3AF); // Light gray for disabled states
 
   static const Color textPrimaryDark = Color(
     0xFFF8FAFC,
@@ -636,9 +626,8 @@ class AppTheme {
   /// Implements typography standards for headings, body text, and captions
   static TextTheme _buildTextTheme({required bool isLight}) {
     final Color textPrimary = isLight ? textPrimaryLight : textPrimaryDark;
-    final Color textSecondary = isLight
-        ? textSecondaryLight
-        : textSecondaryDark;
+    final Color textSecondary =
+        isLight ? textSecondaryLight : textSecondaryDark;
     final Color textDisabled = isLight ? textDisabledLight : textDisabledDark;
 
     return TextTheme(

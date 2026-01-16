@@ -19,15 +19,11 @@ class TimePeriodSelectorWidget extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.w),
+      margin: EdgeInsets.symmetric(horizontal: 4.w),
       padding: EdgeInsets.all(1.w),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
       ),
       child: Row(
         children: periods.map((period) {
@@ -38,7 +34,7 @@ class TimePeriodSelectorWidget extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                padding: EdgeInsets.symmetric(vertical: 2.w),
+                padding: EdgeInsets.symmetric(vertical: 2.5.w, horizontal: 3.w),
                 decoration: BoxDecoration(
                   color: isSelected ? colorScheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
@@ -46,11 +42,12 @@ class TimePeriodSelectorWidget extends StatelessWidget {
                 child: Text(
                   period,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.labelMedium?.copyWith(
+                  style: theme.textTheme.labelLarge?.copyWith(
                     color: isSelected
                         ? colorScheme.onPrimary
                         : colorScheme.onSurfaceVariant,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 13.sp,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

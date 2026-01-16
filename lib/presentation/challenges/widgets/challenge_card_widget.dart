@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../widgets/custom_icon_widget.dart';
 
 class ChallengeCardWidget extends StatelessWidget {
   final Map<String, dynamic> challenge;
@@ -13,6 +14,52 @@ class ChallengeCardWidget extends StatelessWidget {
     this.onTap,
   });
 
+  // Map difficulty to icon and color
+  Map<String, dynamic> _getDifficultyConfig(String difficulty) {
+    // Consistent dark gray/slate background for all icons
+    const Color iconBackgroundColor = Color(0xFF1E3A5A);
+    // Consistent dark navy badge color for all difficulty levels
+    const Color badgeColor = Color(0xFF1E3A5A);
+
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+      case 'beginner':
+        return {
+          'icon': 'ac_unit',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'BEGINNER'
+        };
+      case 'medium':
+      case 'intermediate':
+        return {
+          'icon': 'local_fire_department',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'INTERMEDIATE'
+        };
+      case 'hard':
+      case 'advanced':
+        return {
+          'icon': 'emoji_events',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'ADVANCED'
+        };
+      default:
+        return {
+          'icon': 'whatshot',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'BEGINNER'
+        };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -20,205 +67,206 @@ class ChallengeCardWidget extends StatelessWidget {
     final isActive = challenge['isActive'] as bool? ?? false;
     final isJoined = challenge['isJoined'] as bool? ?? false;
     final progress = (challenge['progress'] as num?)?.toDouble() ?? 0.0;
+    final difficulty = challenge['difficulty'] as String? ?? 'beginner';
+    final difficultyConfig = _getDifficultyConfig(difficulty);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 75.w,
-        margin: EdgeInsets.only(right: 4.w),
+        width: double.infinity,
         decoration: BoxDecoration(
-          color: colorScheme.surface,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: isActive
               ? Border.all(color: colorScheme.primary, width: 2)
-              : Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+              : null,
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.1),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 8,
-              offset: const Offset(0, 4),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Challenge Image
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: CustomImageWidget(
-                imageUrl: challenge['image'] as String,
-                width: double.infinity,
-                height: 20.h,
-                fit: BoxFit.cover,
-                semanticLabel: challenge['semanticLabel'] as String,
-              ),
-            ),
-
-            Padding(
-              padding: EdgeInsets.all(4.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: EdgeInsets.all(4.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon badge and difficulty badge row
+              Row(
                 children: [
-                  // Challenge Title and Difficulty
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          challenge['title'] as String,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.onSurface,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      _buildDifficultyBadge(
-                          context, challenge['difficulty'] as String),
-                    ],
-                  ),
-
-                  SizedBox(height: 2.h),
-
-                  // Challenge Description
-                  Text(
-                    challenge['description'] as String,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+                  // Colored circular icon badge
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: difficultyConfig['backgroundColor'] as Color,
+                      shape: BoxShape.circle,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  SizedBox(height: 3.h),
-
-                  // Progress Bar (if joined)
-                  if (isJoined) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: LinearProgressIndicator(
-                            value: progress / 100,
-                            backgroundColor:
-                                colorScheme.outline.withValues(alpha: 0.2),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              colorScheme.primary,
-                            ),
-                            minHeight: 6,
-                          ),
-                        ),
-                        SizedBox(width: 2.w),
-                        Text(
-                          '${progress.toInt()}%',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
+                    child: Center(
+                      child: CustomIconWidget(
+                        iconName: difficultyConfig['icon'] as String,
+                        size: 28,
+                        color: difficultyConfig['iconColor'] as Color,
+                      ),
                     ),
-                    SizedBox(height: 2.h),
-                  ],
-
-                  // Challenge Stats
-                  Row(
-                    children: [
-                      CustomIconWidget(
-                        iconName: 'people',
-                        size: 16,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      SizedBox(width: 1.w),
-                      Text(
-                        '${challenge['participants']} joined',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const Spacer(),
-                      CustomIconWidget(
-                        iconName: 'schedule',
-                        size: 16,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      SizedBox(width: 1.w),
-                      Text(
-                        challenge['timeLeft'] as String,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
                   ),
-
-                  SizedBox(height: 3.h),
-
-                  // Join/Status Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isJoined
-                            ? colorScheme.primary.withValues(alpha: 0.1)
-                            : colorScheme.primary,
-                        foregroundColor: isJoined
-                            ? colorScheme.primary
-                            : colorScheme.onPrimary,
-                        elevation: isJoined ? 0 : 2,
-                        padding: EdgeInsets.symmetric(vertical: 2.h),
+                  const Spacer(),
+                  // Difficulty badge
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 3.w, vertical: 0.8.h),
+                    decoration: BoxDecoration(
+                      color: (difficultyConfig['badgeColor'] as Color)
+                          .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: (difficultyConfig['badgeColor'] as Color)
+                            .withValues(alpha: 0.3),
+                        width: 1,
                       ),
-                      child: Text(
-                        isJoined ? 'View Progress' : 'Join Challenge',
-                        style: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                    child: Text(
+                      difficultyConfig['label'] as String,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: difficultyConfig['badgeColor'] as Color,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10.sp,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildDifficultyBadge(BuildContext context, String difficulty) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+              SizedBox(height: 3.h),
 
-    Color badgeColor;
-    switch (difficulty.toLowerCase()) {
-      case 'easy':
-        badgeColor = AppTheme.successLight;
-        break;
-      case 'medium':
-        badgeColor = AppTheme.warningLight;
-        break;
-      case 'hard':
-        badgeColor = AppTheme.errorLight;
-        break;
-      default:
-        badgeColor = colorScheme.primary;
-    }
+              // Challenge Title
+              Text(
+                challenge['title'] as String,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
 
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
-      decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        difficulty.toUpperCase(),
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: badgeColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 10.sp,
+              SizedBox(height: 1.5.h),
+
+              // Challenge Description
+              Text(
+                challenge['description'] as String,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Goal/Duration
+              Row(
+                children: [
+                  CustomIconWidget(
+                    iconName: 'flag',
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: 1.w),
+                  Text(
+                    '${challenge['target_value'] ?? 7}-day streak',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  CustomIconWidget(
+                    iconName: 'schedule',
+                    size: 16,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: 1.w),
+                  Text(
+                    challenge['timeLeft'] as String,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 2.h),
+
+              // Progress Bar (if joined)
+              if (isJoined) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress / 100,
+                          backgroundColor:
+                              colorScheme.outline.withValues(alpha: 0.15),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            colorScheme.primary,
+                          ),
+                          minHeight: 6,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 2.w),
+                    Text(
+                      '${progress.toInt()}%',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 2.h),
+              ],
+
+              // Removed participants count section
+
+              SizedBox(height: 3.h),
+
+              // Join/Status Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isJoined
+                        ? colorScheme.primary.withValues(alpha: 0.1)
+                        : colorScheme.primary,
+                    foregroundColor:
+                        isJoined ? colorScheme.primary : Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.symmetric(vertical: 1.8.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    isJoined ? 'View Progress' : 'Join Challenge',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: isJoined ? colorScheme.primary : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -128,26 +128,29 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 12.w,
-                  height: 0.5.h,
-                  decoration: BoxDecoration(
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+              // Title with close button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Session Setup',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ),
-              SizedBox(height: 3.h),
-
-              // Title
-              Text(
-                'Session Setup',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
+                  GestureDetector(
+                    onTap: widget.onCancel,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.close,
+                        size: 20,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 1.h),
               Text(
@@ -353,24 +356,14 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
               ),
               SizedBox(height: 4.h),
 
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: widget.onCancel,
-                      child: Text('Cancel'),
-                    ),
-                  ),
-                  SizedBox(width: 4.w),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _handleSetupComplete,
-                      child: Text('Start Session'),
-                    ),
-                  ),
-                ],
+              // Full-width Start Session button with increased height
+              SizedBox(
+                width: double.infinity,
+                height: 70,
+                child: ElevatedButton(
+                  onPressed: _handleSetupComplete,
+                  child: Text('Start Session'),
+                ),
               ),
             ],
           ),

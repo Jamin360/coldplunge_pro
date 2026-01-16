@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../widgets/custom_icon_widget.dart';
 
 class ActiveChallengeWidget extends StatelessWidget {
   final Map<String, dynamic>? activeChallenge;
@@ -25,36 +26,35 @@ class ActiveChallengeWidget extends StatelessWidget {
     final progress = (activeChallenge!['progress'] as num?)?.toDouble() ?? 0.0;
     final currentStreak = activeChallenge!['currentStreak'] as int? ?? 0;
     final targetStreak = activeChallenge!['targetStreak'] as int? ?? 7;
-    final position = activeChallenge!['leaderboardPosition'] as int? ?? 0;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         margin: EdgeInsets.symmetric(horizontal: 4.w),
-        padding: EdgeInsets.all(4.w),
+        padding: EdgeInsets.all(5.w),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
               colorScheme.primary,
-              colorScheme.primary.withValues(alpha: 0.8),
+              colorScheme.primary.withValues(alpha: 0.85),
             ],
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.primary.withValues(alpha: 0.3),
+              color: colorScheme.primary.withValues(alpha: 0.25),
               blurRadius: 12,
-              offset: const Offset(0, 6),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header with badge
             Row(
               children: [
                 Container(
@@ -63,43 +63,33 @@ class ActiveChallengeWidget extends StatelessWidget {
                     color: colorScheme.onPrimary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    'ACTIVE CHALLENGE',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomIconWidget(
+                        iconName: 'local_fire_department',
+                        size: 14,
+                        color: colorScheme.onPrimary,
+                      ),
+                      SizedBox(width: 1.w),
+                      Text(
+                        'ACTIVE CHALLENGE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10.sp,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Spacer(),
-                if (position > 0)
-                  Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 2.w, vertical: 0.5.h),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentLight,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CustomIconWidget(
-                          iconName: 'emoji_events',
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                        SizedBox(width: 1.w),
-                        Text(
-                          '#$position',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                CustomIconWidget(
+                  iconName: 'arrow_forward_ios',
+                  size: 16,
+                  color: colorScheme.onPrimary.withValues(alpha: 0.8),
+                ),
               ],
             ),
 
@@ -108,7 +98,7 @@ class ActiveChallengeWidget extends StatelessWidget {
             // Challenge Title
             Text(
               activeChallenge!['title'] as String,
-              style: theme.textTheme.headlineSmall?.copyWith(
+              style: theme.textTheme.titleLarge?.copyWith(
                 color: colorScheme.onPrimary,
                 fontWeight: FontWeight.w700,
               ),
@@ -116,64 +106,84 @@ class ActiveChallengeWidget extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
 
-            SizedBox(height: 2.h),
+            SizedBox(height: 3.h),
 
-            // Progress Section
+            // Progress and Streak Row
             Row(
               children: [
+                // Progress Section
                 Expanded(
-                  flex: 2,
+                  flex: 3,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Progress',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.onPrimary.withValues(alpha: 0.8),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Progress',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color:
+                                  colorScheme.onPrimary.withValues(alpha: 0.85),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            '${progress.toInt()}%',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: colorScheme.onPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 1.h),
-                      LinearProgressIndicator(
-                        value: progress / 100,
-                        backgroundColor:
-                            colorScheme.onPrimary.withValues(alpha: 0.3),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.accentLight,
-                        ),
-                        minHeight: 8,
-                      ),
-                      SizedBox(height: 1.h),
-                      Text(
-                        '${progress.toInt()}% Complete',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onPrimary,
-                          fontWeight: FontWeight.w600,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress / 100,
+                          backgroundColor:
+                              colorScheme.onPrimary.withValues(alpha: 0.3),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            colorScheme.onPrimary,
+                          ),
+                          minHeight: 8,
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(width: 4.w),
-                Expanded(
+                SizedBox(width: 6.w),
+                // Streak Badge
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+                  decoration: BoxDecoration(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
                     children: [
                       Text(
                         '$currentStreak',
                         style: theme.textTheme.headlineMedium?.copyWith(
-                          color: AppTheme.accentLight,
+                          color: colorScheme.onPrimary,
                           fontWeight: FontWeight.w800,
+                          height: 1,
                         ),
                       ),
+                      SizedBox(height: 0.5.h),
                       Text(
-                        'Day Streak',
+                        'Days',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onPrimary.withValues(alpha: 0.8),
+                          color: colorScheme.onPrimary.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       Text(
                         'of $targetStreak',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: colorScheme.onPrimary.withValues(alpha: 0.6),
+                          color: colorScheme.onPrimary.withValues(alpha: 0.65),
+                          fontSize: 9.sp,
                         ),
                       ),
                     ],
@@ -182,29 +192,23 @@ class ActiveChallengeWidget extends StatelessWidget {
               ],
             ),
 
-            SizedBox(height: 3.h),
+            SizedBox(height: 2.h),
 
             // Time Remaining
             Row(
               children: [
                 CustomIconWidget(
                   iconName: 'schedule',
-                  size: 20,
-                  color: colorScheme.onPrimary.withValues(alpha: 0.8),
+                  size: 16,
+                  color: colorScheme.onPrimary.withValues(alpha: 0.85),
                 ),
-                SizedBox(width: 2.w),
+                SizedBox(width: 1.5.w),
                 Text(
                   '${activeChallenge!['timeLeft']} remaining',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onPrimary.withValues(alpha: 0.9),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onPrimary.withValues(alpha: 0.85),
                     fontWeight: FontWeight.w500,
                   ),
-                ),
-                const Spacer(),
-                CustomIconWidget(
-                  iconName: 'arrow_forward_ios',
-                  size: 16,
-                  color: colorScheme.onPrimary.withValues(alpha: 0.8),
                 ),
               ],
             ),
@@ -223,26 +227,32 @@ class ActiveChallengeWidget extends StatelessWidget {
       margin: EdgeInsets.symmetric(horizontal: 4.w),
       padding: EdgeInsets.all(6.w),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.2),
-          style: BorderStyle.solid,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.shadow.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         children: [
-          CustomIconWidget(
-            iconName: 'emoji_events_outlined',
-            size: 48,
-            color: colorScheme.onSurfaceVariant,
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: CustomIconWidget(
+                iconName: 'emoji_events',
+                size: 32,
+                color: colorScheme.primary.withValues(alpha: 0.6),
+              ),
+            ),
           ),
           SizedBox(height: 2.h),
           Text(

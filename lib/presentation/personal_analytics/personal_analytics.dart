@@ -3,14 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../core/utils/chart_utils.dart';
 import '../../services/analytics_service.dart';
-import './widgets/achievements_timeline_widget.dart';
 import './widgets/chart_container_widget.dart';
-import './widgets/export_options_widget.dart';
 import './widgets/metrics_card_widget.dart';
-import './widgets/mood_analytics_widget.dart';
 import './widgets/progress_goal_widget.dart';
-import './widgets/time_period_selector_widget.dart';
 
 class PersonalAnalytics extends StatefulWidget {
   const PersonalAnalytics({super.key});
@@ -227,13 +224,40 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
     }
   }
 
+  // Updated: Calculate optimal interval for session frequency chart
+  double _calculateSessionFrequencyInterval() {
+    if (_sessionFrequencyData.isEmpty) return 1.0;
+
+    final counts = _sessionFrequencyData
+        .map<double>((data) => (data['sessions'] as num).toDouble())
+        .toList();
+
+    final maxCount = counts.reduce((a, b) => a > b ? a : b);
+    return ChartUtils.calculateOptimalInterval(0, maxCount * 1.2);
+  }
+
+  // Updated: Calculate optimal interval for temperature chart
+  double _calculateTemperatureInterval() {
+    final validTemps = _temperatureProgressData
+        .map<double>((data) => (data['temp'] as num).toDouble())
+        .toList();
+
+    if (validTemps.isEmpty) return 10.0;
+
+    final minTemp = ChartUtils.calculateMinTemperature(validTemps);
+    final maxTemp = ChartUtils.calculateMaxTemperature(validTemps);
+
+    return ChartUtils.calculateOptimalInterval(minTemp, maxTemp);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface.withValues(alpha: 0.95),
+      backgroundColor:
+          const Color(0xFFF5F5F5), // Light gray background matching Home page
       appBar: AppBar(
         title: Text(
           'Personal Analytics',
@@ -349,30 +373,35 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 2.w),
+                      SizedBox(height: 3.w),
 
-                      // Time Period Selector
-                      TimePeriodSelectorWidget(
-                        selectedPeriod: _selectedPeriod,
-                        onPeriodChanged: (period) {
-                          setState(() {
-                            _selectedPeriod = period;
-                          });
-                          _loadAnalyticsData();
-                        },
-                        periods: _periods,
-                      ),
+                      // Time Period Selector - Styled like Challenges filter tabs
+                      // TimePeriodSelectorWidget(
+                      //   selectedPeriod: _selectedPeriod,
+                      //   onPeriodChanged: (period) {
+                      //     setState(() {
+                      //       _selectedPeriod = period;
+                      //     });
+                      //     _loadAnalyticsData();
+                      //   },
+                      //   periods: _periods,
+                      // ),
 
-                      // Key Metrics Cards
-                      SizedBox(height: 2.w),
-                      SizedBox(
-                        height: 35.w,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: EdgeInsets.symmetric(horizontal: 4.w),
+                      // Key Metrics Cards - 2x2 Grid Layout
+                      SizedBox(height: 3.w),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4.w),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 3.w,
+                            mainAxisSpacing: 3.w,
+                            childAspectRatio: 1.1,
+                          ),
                           itemCount: _keyMetrics.length,
-                          separatorBuilder: (context, index) =>
-                              SizedBox(width: 3.w),
                           itemBuilder: (context, index) {
                             final metric = _keyMetrics[index];
                             return MetricsCardWidget(
@@ -380,7 +409,6 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                               value: metric['value'] as String,
                               subtitle: metric['subtitle'] as String,
                               icon: metric['icon'] as IconData,
-                              iconColor: metric['iconColor'] as Color?,
                               isHighlighted: metric['isHighlighted'] as bool,
                             );
                           },
@@ -389,27 +417,27 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
 
                       // Progress Goals
                       if (_analyticsData['weeklyGoal'] != null) ...[
-                        SizedBox(height: 2.w),
+                        SizedBox(height: 3.w),
                         ProgressGoalWidget(
                           title: 'Weekly Goal Progress',
                           currentValue: _analyticsData['weeklyGoal']
-                                      ['current_sessions']
+                                      ['currentSessions']
                                   ?.toString() ??
                               '0',
                           targetValue: _analyticsData['weeklyGoal']
-                                      ['target_sessions']
+                                      ['targetSessions']
                                   ?.toString() ??
                               '0',
                           progress: _analyticsData['weeklyGoal']
-                                          ['current_sessions'] !=
+                                          ['currentSessions'] !=
                                       null &&
                                   _analyticsData['weeklyGoal']
-                                          ['target_sessions'] !=
+                                          ['targetSessions'] !=
                                       null
                               ? (_analyticsData['weeklyGoal']
-                                          ['current_sessions'] /
+                                          ['currentSessions'] /
                                       _analyticsData['weeklyGoal']
-                                          ['target_sessions'])
+                                          ['targetSessions'])
                                   .clamp(0.0, 1.0)
                               : 0.0,
                           motivationalMessage: _getMotivationalMessage(),
@@ -418,6 +446,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                       ],
 
                       // Session Frequency Chart
+                      SizedBox(height: 3.w),
                       if (_sessionFrequencyData.isNotEmpty)
                         ChartContainerWidget(
                           title: 'Session Frequency',
@@ -446,7 +475,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                       rodIndex,
                                     ) {
                                       return BarTooltipItem(
-                                        '${_sessionFrequencyData[group.x]['sessions']} sessions',
+                                        '${_sessionFrequencyData[group.x.toInt()]['sessions']} sessions',
                                         TextStyle(
                                           color: colorScheme.onSurface,
                                           fontWeight: FontWeight.w600,
@@ -466,6 +495,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
+                                      reservedSize: 30,
                                       getTitlesWidget: (
                                         double value,
                                         TitleMeta meta,
@@ -495,27 +525,29 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                         }
                                         return const Text('');
                                       },
-                                      reservedSize: 30,
                                     ),
                                   ),
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      interval: 1,
-                                      getTitlesWidget: (
-                                        double value,
-                                        TitleMeta meta,
-                                      ) {
-                                        return Text(
-                                          value.toInt().toString(),
-                                          style: TextStyle(
-                                            color: colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w400,
-                                            fontSize: 10.sp,
+                                      reservedSize: 28,
+                                      interval:
+                                          _calculateSessionFrequencyInterval(),
+                                      getTitlesWidget:
+                                          (double value, TitleMeta meta) {
+                                        return Padding(
+                                          padding: EdgeInsets.only(right: 2.w),
+                                          child: Text(
+                                            ChartUtils.formatCountLabel(value),
+                                            style: TextStyle(
+                                              color:
+                                                  colorScheme.onSurfaceVariant,
+                                              fontWeight: FontWeight.w400,
+                                              fontSize: 10.sp,
+                                            ),
                                           ),
                                         );
                                       },
-                                      reservedSize: 32,
                                     ),
                                   ),
                                 ),
@@ -551,7 +583,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                 gridData: FlGridData(
                                   show: true,
                                   drawVerticalLine: false,
-                                  horizontalInterval: 1,
+                                  horizontalInterval:
+                                      _calculateSessionFrequencyInterval(),
                                   getDrawingHorizontalLine: (value) {
                                     return FlLine(
                                       color: colorScheme.outline.withValues(
@@ -564,19 +597,16 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                               ),
                             ),
                           ),
-                          onTap: () {
-                            // Navigate to detailed chart view
-                          },
                         ),
 
                       // Temperature Progress Chart
+                      SizedBox(height: 3.w),
                       if (_temperatureProgressData.isNotEmpty)
                         Builder(
                           builder: (context) {
                             // Check if we have actual temperature data
-                            final hasActualData = _temperatureProgressData.any(
-                              (data) => data['temp'] != null,
-                            );
+                            final hasActualData =
+                                _temperatureProgressData.isNotEmpty;
 
                             if (!hasActualData) {
                               return Container(
@@ -587,9 +617,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: colorScheme.shadow.withValues(
-                                        alpha: 0.05,
-                                      ),
+                                      color: colorScheme.shadow
+                                          .withValues(alpha: 0.05),
                                       blurRadius: 8,
                                       offset: const Offset(0, 2),
                                     ),
@@ -637,9 +666,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                     Container(
                                       padding: EdgeInsets.all(4.w),
                                       decoration: BoxDecoration(
-                                        color: colorScheme.primary.withValues(
-                                          alpha: 0.1,
-                                        ),
+                                        color: colorScheme.primary
+                                            .withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -667,6 +695,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                               );
                             }
 
+                            // Show actual chart when data exists
                             return ChartContainerWidget(
                               title: 'Temperature Progress',
                               subtitle:
@@ -679,12 +708,12 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                     gridData: FlGridData(
                                       show: true,
                                       drawVerticalLine: false,
-                                      horizontalInterval: 10,
+                                      horizontalInterval:
+                                          _calculateTemperatureInterval(),
                                       getDrawingHorizontalLine: (value) {
                                         return FlLine(
-                                          color: colorScheme.outline.withValues(
-                                            alpha: 0.1,
-                                          ),
+                                          color: colorScheme.outline
+                                              .withValues(alpha: 0.1),
                                           strokeWidth: 1,
                                         );
                                       },
@@ -713,9 +742,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                                     _temperatureProgressData
                                                         .length) {
                                               return Padding(
-                                                padding: EdgeInsets.only(
-                                                  top: 2.w,
-                                                ),
+                                                padding:
+                                                    EdgeInsets.only(top: 2.w),
                                                 child: Text(
                                                   _temperatureProgressData[
                                                           index]['session']
@@ -736,31 +764,35 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                       leftTitles: AxisTitles(
                                         sideTitles: SideTitles(
                                           showTitles: true,
-                                          interval: 10,
-                                          getTitlesWidget: (
-                                            double value,
-                                            TitleMeta meta,
-                                          ) {
-                                            return Text(
-                                              '${value.toInt()}°F',
-                                              style: TextStyle(
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                                fontWeight: FontWeight.w400,
-                                                fontSize: 10.sp,
+                                          reservedSize: 40,
+                                          interval:
+                                              _calculateTemperatureInterval(),
+                                          getTitlesWidget:
+                                              (double value, TitleMeta meta) {
+                                            return Padding(
+                                              padding:
+                                                  EdgeInsets.only(right: 2.w),
+                                              child: Text(
+                                                ChartUtils
+                                                    .formatTemperatureLabel(
+                                                        value),
+                                                style: TextStyle(
+                                                  color: colorScheme
+                                                      .onSurfaceVariant,
+                                                  fontWeight: FontWeight.w400,
+                                                  fontSize: 10.sp,
+                                                ),
                                               ),
                                             );
                                           },
-                                          reservedSize: 40,
                                         ),
                                       ),
                                     ),
                                     borderData: FlBorderData(
                                       show: true,
                                       border: Border.all(
-                                        color: colorScheme.outline.withValues(
-                                          alpha: 0.1,
-                                        ),
+                                        color: colorScheme.outline
+                                            .withValues(alpha: 0.1),
                                       ),
                                     ),
                                     minX: 0,
@@ -768,14 +800,36 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                         .toDouble(),
                                     minY: _getMinTemperature().toDouble(),
                                     maxY: _getMaxTemperature().toDouble(),
+                                    lineBarsData: [
+                                      LineChartBarData(
+                                        spots: _temperatureProgressData
+                                            .asMap()
+                                            .entries
+                                            .map((entry) {
+                                          return FlSpot(
+                                            entry.key.toDouble(),
+                                            (entry.value['temp'] as num)
+                                                .toDouble(),
+                                          );
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: colorScheme.primary,
+                                        barWidth: 3,
+                                        isStrokeCapRound: true,
+                                        dotData: const FlDotData(show: true),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          color: colorScheme.primary
+                                              .withValues(alpha: 0.1),
+                                        ),
+                                      ),
+                                    ],
                                     lineTouchData: LineTouchData(
-                                      enabled: true,
                                       touchTooltipData: LineTouchTooltipData(
                                         tooltipBgColor: colorScheme.surface,
                                         tooltipBorder: BorderSide(
-                                          color: colorScheme.outline.withValues(
-                                            alpha: 0.2,
-                                          ),
+                                          color: colorScheme.outline
+                                              .withValues(alpha: 0.2),
                                         ),
                                         getTooltipItems: (touchedSpots) {
                                           return touchedSpots.map((spot) {
@@ -784,11 +838,12 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                                 index <
                                                     _temperatureProgressData
                                                         .length) {
-                                              final data =
-                                                  _temperatureProgressData[
-                                                      index];
+                                              final temp =
+                                                  (_temperatureProgressData[
+                                                          index]['temp'] as num)
+                                                      .toInt();
                                               return LineTooltipItem(
-                                                '${data['temp']}°F\n${data['dateLabel']}',
+                                                '$temp°F',
                                                 TextStyle(
                                                   color: colorScheme.onSurface,
                                                   fontWeight: FontWeight.w600,
@@ -800,83 +855,14 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                                         },
                                       ),
                                     ),
-                                    lineBarsData: [
-                                      LineChartBarData(
-                                        spots: _temperatureProgressData
-                                            .asMap()
-                                            .entries
-                                            .map((entry) {
-                                          final fahrenheit =
-                                              (entry.value['temp'] as num)
-                                                  .toDouble();
-                                          return FlSpot(
-                                            entry.key.toDouble(),
-                                            fahrenheit,
-                                          );
-                                        }).toList(),
-                                        isCurved: true,
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.blue.withValues(alpha: 0.8),
-                                            Colors.blue,
-                                          ],
-                                        ),
-                                        barWidth: 3,
-                                        isStrokeCapRound: true,
-                                        dotData: FlDotData(
-                                          show: true,
-                                          getDotPainter: (
-                                            spot,
-                                            percent,
-                                            barData,
-                                            index,
-                                          ) {
-                                            return FlDotCirclePainter(
-                                              radius: 4,
-                                              color: Colors.blue,
-                                              strokeWidth: 2,
-                                              strokeColor: colorScheme.surface,
-                                            );
-                                          },
-                                        ),
-                                        belowBarData: BarAreaData(
-                                          show: true,
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.blue
-                                                  .withValues(alpha: 0.1),
-                                              Colors.blue
-                                                  .withValues(alpha: 0.05),
-                                            ],
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 ),
                               ),
-                              onTap: () {
-                                // Navigate to detailed chart view
-                              },
                             );
                           },
                         ),
 
-                      // Mood Analytics
-                      if (_moodData.isNotEmpty)
-                        MoodAnalyticsWidget(moodData: [_moodData]),
-
-                      // Achievements Timeline
-                      AchievementsTimelineWidget(achievements: _achievements),
-
-                      // Export Options
-                      ExportOptionsWidget(
-                        onExportPDF: () => _exportPDF(),
-                        onExportCSV: () => _exportCSV(),
-                      ),
-
+                      // Bottom spacing only - removed all content below Temperature chart to prevent scrolling
                       SizedBox(height: 4.w),
                     ],
                   ),
@@ -887,8 +873,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   String _getMotivationalMessage() {
     final weeklyGoal = _analyticsData['weeklyGoal'];
     if (weeklyGoal != null) {
-      final current = weeklyGoal['current_sessions'] ?? 0;
-      final target = weeklyGoal['target_sessions'] ?? 0;
+      final current = weeklyGoal['currentSessions'] ?? 0;
+      final target = weeklyGoal['targetSessions'] ?? 0;
       final remaining = target - current;
 
       if (remaining <= 0) {
@@ -912,9 +898,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   int _getMinTemperature() {
     if (_temperatureProgressData.isEmpty) return 30;
 
-    // Filter out null temperatures and get minimum
+    // Get all temperatures and convert to integers
     final validTemps = _temperatureProgressData
-        .where((data) => data['temp'] != null)
         .map<int>((data) => (data['temp'] as num).toInt())
         .toList();
 
@@ -928,9 +913,8 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   int _getMaxTemperature() {
     if (_temperatureProgressData.isEmpty) return 70;
 
-    // Filter out null temperatures and get maximum
+    // Get all temperatures and convert to integers
     final validTemps = _temperatureProgressData
-        .where((data) => data['temp'] != null)
         .map<int>((data) => (data['temp'] as num).toInt())
         .toList();
 

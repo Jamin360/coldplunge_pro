@@ -134,12 +134,11 @@ class AnalyticsService {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
-      // Fetch last 10 sessions with temperature data
+      // Fetch last 10 sessions with temperature data (temperature is NOT NULL in schema)
       final response = await _supabase
           .from('plunge_sessions')
           .select('id, temperature, created_at')
           .eq('user_id', userId)
-          .not('temperature', 'is', null)
           .order('created_at', ascending: false)
           .limit(10);
 
@@ -158,7 +157,7 @@ class AnalyticsService {
         final temp = session['temperature'];
         final createdAt = DateTime.parse(session['created_at'] as String);
 
-        // Create session label (e.g., "Session 1", "Session 2")
+        // Create session label (e.g., "S1", "S2")
         final sessionLabel = 'S${i + 1}';
 
         // Calculate days ago for better context
@@ -169,9 +168,13 @@ class AnalyticsService {
                 ? 'Yesterday'
                 : '${daysAgo}d ago';
 
+        // Convert temperature to double for chart compatibility
+        final tempValue =
+            (temp is int) ? temp.toDouble() : (temp as num).toDouble();
+
         tempData.add({
           'session': sessionLabel,
-          'temp': temp is int ? temp : (temp as num).toInt(),
+          'temp': tempValue,
           'date': createdAt,
           'dateLabel': dateLabel,
         });

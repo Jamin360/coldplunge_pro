@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../widgets/custom_icon_widget.dart';
 
 class StreakCounterWidget extends StatefulWidget {
   final int streakCount;
@@ -27,48 +28,50 @@ class _StreakCounterWidgetState extends State<StreakCounterWidget> {
       width: double.infinity,
       padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.primary.withValues(alpha: 0.1),
-            colorScheme.secondary.withValues(alpha: 0.05),
-          ],
-        ),
+        color: Colors.white, // Clean white card
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.2),
-          width: 1,
+          color: const Color(0xFF64748B)
+              .withValues(alpha: 0.2), // Subtle slate border (replaced teal)
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Text(
             'Current Streak',
             style: theme.textTheme.titleMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1E3A5A), // Navy text
+              fontWeight: FontWeight.w600,
             ),
           ),
           SizedBox(height: 2.h),
 
-          // Static counter circle (removed pulsing animation)
+          // Circular streak counter with navy to slate gradient
           Container(
             width: 20.w,
             height: 20.w,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  colorScheme.primary,
-                  colorScheme.secondary,
+                  Color(0xFF1E3A5A), // Navy blue
+                  Color(0xFF475569), // Slate blue (replaced teal)
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.3),
+                  color: const Color(0xFF1E3A5A)
+                      .withValues(alpha: 0.3), // Navy shadow (replaced teal)
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -90,7 +93,7 @@ class _StreakCounterWidgetState extends State<StreakCounterWidget> {
           Text(
             widget.streakCount == 1 ? 'Day' : 'Days',
             style: theme.textTheme.titleLarge?.copyWith(
-              color: colorScheme.primary,
+              color: const Color(0xFF1E3A5A), // Navy text
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -99,13 +102,16 @@ class _StreakCounterWidgetState extends State<StreakCounterWidget> {
             padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
             decoration: BoxDecoration(
               color: widget.hasPlungedToday
-                  ? AppTheme.successLight.withValues(alpha: 0.1)
-                  : AppTheme.warningLight.withValues(alpha: 0.1),
+                  ? const Color(
+                      0xFFDCFCE7) // Light green background (replaced teal)
+                  : const Color(0xFFD97706)
+                      .withValues(alpha: 0.1), // Muted amber for pending
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: widget.hasPlungedToday
-                    ? AppTheme.successLight.withValues(alpha: 0.3)
-                    : AppTheme.warningLight.withValues(alpha: 0.3),
+                    ? const Color(0xFF22C55E).withValues(
+                        alpha: 0.3) // Soft green border (replaced teal)
+                    : const Color(0xFFD97706).withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -116,8 +122,9 @@ class _StreakCounterWidgetState extends State<StreakCounterWidget> {
                   iconName:
                       widget.hasPlungedToday ? 'check_circle' : 'schedule',
                   color: widget.hasPlungedToday
-                      ? AppTheme.successLight
-                      : AppTheme.warningLight,
+                      ? const Color(
+                          0xFF22C55E) // Soft green icon (replaced teal)
+                      : const Color(0xFFD97706),
                   size: 16,
                 ),
                 SizedBox(width: 1.w),
@@ -125,8 +132,9 @@ class _StreakCounterWidgetState extends State<StreakCounterWidget> {
                   widget.hasPlungedToday ? 'Completed Today' : 'Pending Today',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: widget.hasPlungedToday
-                        ? AppTheme.successLight
-                        : AppTheme.warningLight,
+                        ? const Color(
+                            0xFF22C55E) // Soft green text (replaced teal)
+                        : const Color(0xFFD97706),
                     fontWeight: FontWeight.w500,
                   ),
                 ),

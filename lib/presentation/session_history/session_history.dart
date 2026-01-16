@@ -455,7 +455,7 @@ class _SessionHistoryState extends State<SessionHistory> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: AppTheme.backgroundLight,
       appBar: CustomAppBar(
         title: 'Session History',
         showBackButton: true,
@@ -486,12 +486,27 @@ class _SessionHistoryState extends State<SessionHistory> {
                   size: 24,
                 ),
                 filled: true,
-                fillColor: colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.3,
-                ),
+                fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(
+                    color: AppTheme.borderLight,
+                    width: 1,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: AppTheme.borderLight,
+                    width: 1,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.primary,
+                    width: 2,
+                  ),
                 ),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 4.w,

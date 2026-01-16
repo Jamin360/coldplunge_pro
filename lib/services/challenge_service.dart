@@ -345,8 +345,28 @@ class ChallengeService {
                 : 0.0;
             break;
 
+          case 'duration':
+            // Check if any single session meets the target duration
+            final sessions = await _client
+                .from('plunge_sessions')
+                .select('duration')
+                .eq('user_id', currentUser.id)
+                .gte('created_at', joinedAt.toIso8601String())
+                .order('duration', ascending: false)
+                .limit(1);
+
+            if (sessions.isNotEmpty) {
+              final maxDuration = sessions.first['duration'] as int? ?? 0;
+              if (targetValue != null && maxDuration >= targetValue) {
+                progress = 100.0;
+              } else if (targetValue != null && targetValue > 0) {
+                progress = (maxDuration / targetValue * 100).clamp(0, 100);
+              }
+            }
+            break;
+
           case 'consistency':
-            // Count sessions since joining the challenge
+            // Count total sessions since joining the challenge
             final sessions = await _client
                 .from('plunge_sessions')
                 .select('id')
@@ -355,21 +375,6 @@ class ChallengeService {
 
             progress = targetValue != null && targetValue > 0
                 ? (sessions.length / targetValue * 100).clamp(0, 100)
-                : 0.0;
-            break;
-
-          case 'duration':
-            // Sum total duration since joining
-            final sessions = await _client
-                .from('plunge_sessions')
-                .select('duration')
-                .eq('user_id', currentUser.id)
-                .gte('created_at', joinedAt.toIso8601String());
-
-            final totalDuration = sessions.fold<int>(
-                0, (sum, s) => sum + (s['duration'] as int? ?? 0));
-            progress = targetValue != null && targetValue > 0
-                ? (totalDuration / targetValue * 100).clamp(0, 100)
                 : 0.0;
             break;
 
@@ -419,6 +424,65 @@ class ChallengeService {
       return response;
     } catch (error) {
       throw Exception('Failed to get challenge: $error');
+    }
+  }
+
+  /// Get user challenge with full details by challenge ID
+  Future<Map<String, dynamic>?> getUserChallengeByIdWithDetails(
+      String challengeId) async {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final response = await _client
+          .from('user_challenges')
+          .select('''
+            *,
+            challenges:challenge_id (
+              id,
+              title,
+              description,
+              difficulty,
+              challenge_type,
+              target_value,
+              duration_days,
+              reward_description,
+              image_url,
+              end_date
+            )
+          ''')
+          .eq('user_id', currentUser.id)
+          .eq('challenge_id', challengeId)
+          .maybeSingle();
+
+      return response;
+    } catch (error) {
+      throw Exception('Failed to get user challenge: $error');
+    }
+  }
+
+  /// Get sessions for a specific challenge
+  Future<List<Map<String, dynamic>>> getChallengeSessionHistory(
+      String challengeId, String joinedAt) async {
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final response = await _client
+          .from('plunge_sessions')
+          .select('id, duration, temperature, created_at, location')
+          .eq('user_id', currentUser.id)
+          .gte('created_at', joinedAt)
+          .order('created_at', ascending: false)
+          .limit(20);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (error) {
+      throw Exception('Failed to get challenge sessions: $error');
     }
   }
 }

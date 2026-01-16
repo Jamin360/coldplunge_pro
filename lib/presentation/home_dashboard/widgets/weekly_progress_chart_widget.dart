@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../core/utils/chart_utils.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 class WeeklyProgressChartWidget extends StatelessWidget {
@@ -12,23 +13,28 @@ class WeeklyProgressChartWidget extends StatelessWidget {
 
   // Calculate dynamic maxY based on data to prevent overflow
   double _calculateMaxY() {
-    if (weeklyData.isEmpty) return 10.0;
+    if (weeklyData.isEmpty) return 180.0; // Default to 3 minutes
 
-    final maxDuration = weeklyData
-        .map((data) => (data['duration'] as num).toDouble())
-        .reduce((a, b) => a > b ? a : b);
+    final durations =
+        weeklyData.map((data) => (data['duration'] as num).toDouble()).toList();
 
-    // Add 20% padding and round to nearest 5
-    final paddedMax = maxDuration * 1.2;
-    return (paddedMax / 5).ceil() * 5.0;
+    return ChartUtils.calculateMaxY(durations, minRange: 180.0);
   }
 
-  // Helper method to format duration display
+  // Calculate optimal interval based on maxY
+  double _calculateInterval() {
+    final maxY = _calculateMaxY();
+    return ChartUtils.calculateOptimalInterval(0, maxY);
+  }
+
+  // Helper method to format duration display for tooltips
   String _formatDuration(int seconds) {
     if (seconds >= 60) {
       final minutes = seconds ~/ 60;
       final remainingSeconds = seconds % 60;
-      return '${minutes}m ${remainingSeconds}s';
+      return remainingSeconds > 0
+          ? '${minutes}m ${remainingSeconds}s'
+          : '${minutes}m';
     }
     return '${seconds}s';
   }
@@ -139,23 +145,21 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        interval: _calculateMaxY() / 5, // Dynamic interval
+                        interval: _calculateInterval(),
                         getTitlesWidget: (double value, TitleMeta meta) {
-                          if (value == 0) return const SizedBox.shrink();
                           return Padding(
                             padding: EdgeInsets.only(right: 1.w),
                             child: Text(
-                              _formatDuration(value.toInt()),
+                              ChartUtils.formatDurationLabel(value),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w400,
-                                fontSize:
-                                    10.sp, // Smaller font to prevent overflow
+                                fontSize: 10.sp,
                               ),
                             ),
                           );
                         },
-                        reservedSize: 35,
+                        reservedSize: 32,
                       ),
                     ),
                   ),
@@ -195,7 +199,7 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    horizontalInterval: _calculateMaxY() / 5,
+                    horizontalInterval: _calculateInterval(),
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
                         color: colorScheme.outline.withValues(alpha: 0.1),

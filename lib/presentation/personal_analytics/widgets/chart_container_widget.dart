@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
-import '../../../widgets/custom_icon_widget.dart';
-
 class ChartContainerWidget extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -27,18 +24,14 @@ class ChartContainerWidget extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.w),
-        padding: EdgeInsets.all(4.w),
+        margin: EdgeInsets.symmetric(horizontal: 4.w),
+        padding: EdgeInsets.all(5.w),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colorScheme.outline.withValues(alpha: 0.1),
-            width: 1,
-          ),
           boxShadow: [
             BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.05),
+              color: colorScheme.shadow.withValues(alpha: 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -58,6 +51,7 @@ class ChartContainerWidget extends StatelessWidget {
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
+                          fontSize: 15.sp,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -67,6 +61,7 @@ class ChartContainerWidget extends StatelessWidget {
                         subtitle,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
+                          fontSize: 11.sp,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -75,17 +70,20 @@ class ChartContainerWidget extends StatelessWidget {
                   ),
                 ),
                 if (onTap != null)
-                  CustomIconWidget(
-                    iconName: 'fullscreen',
+                  Icon(
+                    Icons.fullscreen,
                     color: colorScheme.onSurfaceVariant,
                     size: 5.w,
                   ),
               ],
             ),
-            SizedBox(height: 4.w),
+            SizedBox(height: 5.w),
             SizedBox(
-              height: 50.w,
-              child: chart,
+              height: 48.w,
+              child: Padding(
+                padding: EdgeInsets.only(right: 2.w, top: 2.w),
+                child: chart,
+              ),
             ),
           ],
         ),

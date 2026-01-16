@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../../../services/storage_service.dart';
 
 class SessionCompletionWidget extends StatefulWidget {
   final int duration;
@@ -23,16 +21,41 @@ class SessionCompletionWidget extends StatefulWidget {
       _SessionCompletionWidgetState();
 }
 
-class _SessionCompletionWidgetState extends State<SessionCompletionWidget> {
-  final StorageService _storageService = StorageService();
+class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
+    with TickerProviderStateMixin {
+  late AnimationController _slideController;
+  late Animation<Offset> _slideAnimation;
+
   final TextEditingController _notesController = TextEditingController();
-  XFile? _selectedImage;
-  File? _imageFile;
   bool _isSaving = false;
   int _selectedMood = 2; // Default to Neutral
 
+  final List<Map<String, dynamic>> _moodOptions = [
+    {'emoji': '😰', 'label': 'Anxious', 'value': 1},
+    {'emoji': '😐', 'label': 'Neutral', 'value': 2},
+    {'emoji': '⚡', 'label': 'Energized', 'value': 3},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+    );
+
+    _slideController.forward();
+  }
+
   @override
   void dispose() {
+    _slideController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -46,62 +69,8 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget> {
     return '${seconds}s';
   }
 
-  Future<void> _pickImage() async {
-    final XFile? image =
-        await _storageService.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _selectedImage = image;
-        _imageFile = File(image.path);
-      });
-    }
-  }
-
-  Future<void> _takePhoto() async {
-    final XFile? image =
-        await _storageService.pickImage(source: ImageSource.camera);
-    if (image != null) {
-      setState(() {
-        _selectedImage = image;
-        _imageFile = File(image.path);
-      });
-    }
-  }
-
-  void _removeImage() {
-    setState(() {
-      _selectedImage = null;
-      _imageFile = null;
-    });
-  }
-
-  String _getMoodLabel(int mood) {
-    switch (mood) {
-      case 1:
-        return 'Anxious';
-      case 2:
-        return 'Neutral';
-      case 3:
-        return 'Energized';
-      default:
-        return 'Neutral';
-    }
-  }
-
-  IconData _getMoodIcon(int mood) {
-    switch (mood) {
-      case 1:
-        return Icons.sentiment_dissatisfied;
-      case 2:
-        return Icons.sentiment_neutral;
-      case 3:
-        return Icons.sentiment_very_satisfied;
-      default:
-        return Icons.sentiment_neutral;
-    }
-  }
-
   void _handleSaveSession() {
+    HapticFeedback.mediumImpact();
     widget.onSaveSession(_selectedMood, _notesController.text);
   }
 
@@ -110,243 +79,242 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Container(
-      padding: EdgeInsets.all(4.w),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)],
+    return SlideTransition(
+      position: _slideAnimation,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(6.w),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.check_circle,
-              size: 20.w,
-              color: Colors.white,
-            ),
-            SizedBox(height: 2.h),
-            Text(
-              'Session Complete!',
-              style: TextStyle(
-                fontSize: 20.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(height: 2.h),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 12.w,
+                    height: 0.5.h,
+                    decoration: BoxDecoration(
+                      color:
+                          colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 3.h),
 
-            // Session stats
-            Container(
-              padding: EdgeInsets.all(3.w),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(51),
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Column(
+                // Title
+                Text(
+                  'Session Complete!',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 1.h),
+                Text(
+                  'Great job! How was your plunge?',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+
+                // Session stats - inline card layout
+                Container(
+                  padding: EdgeInsets.all(4.w),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        'Duration',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: Colors.white70,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Duration',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            SizedBox(height: 0.5.h),
+                            Text(
+                              _formatDuration(widget.duration),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 0.5.h),
-                      Text(
-                        _formatDuration(widget.duration),
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      if (widget.temperature != null) ...[
+                        Container(
+                          width: 1,
+                          height: 5.h,
+                          color: colorScheme.outlineVariant,
                         ),
-                      ),
+                        SizedBox(width: 4.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Temperature',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              SizedBox(height: 0.5.h),
+                              Text(
+                                '${widget.temperature!.toStringAsFixed(1)}°F',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  color: colorScheme.onSurface,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                  if (widget.temperature != null)
-                    Column(
-                      children: [
-                        Text(
-                          'Temperature',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        SizedBox(height: 0.5.h),
-                        Text(
-                          '${widget.temperature!.toStringAsFixed(1)}°F',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(height: 3.h),
+                ),
+                SizedBox(height: 4.h),
 
-            // Post-session mood selector
-            Text(
-              'How do you feel after the plunge?',
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [1, 2, 3].map((mood) {
-                final isSelected = _selectedMood == mood;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedMood = mood),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 4.w,
-                      vertical: 1.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white
-                          : Colors.white.withAlpha(51),
-                      borderRadius: BorderRadius.circular(12.0),
-                      border: Border.all(
-                        color: Colors.white,
-                        width: isSelected ? 2 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          _getMoodIcon(mood),
-                          size: 10.w,
+                // Post-session mood selector
+                Text(
+                  'Post-Plunge Mood',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 1.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: _moodOptions.map((mood) {
+                    final isSelected = _selectedMood == mood['value'];
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedMood = mood['value']);
+                        HapticFeedback.lightImpact();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 3.w,
+                          vertical: 1.5.h,
+                        ),
+                        decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFF1E88E5)
-                              : Colors.white70,
-                        ),
-                        SizedBox(height: 0.5.h),
-                        Text(
-                          _getMoodLabel(mood),
-                          style: TextStyle(
-                            fontSize: 11.sp,
+                              ? colorScheme.primary.withValues(alpha: 0.1)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
                             color: isSelected
-                                ? const Color(0xFF1E88E5)
-                                : Colors.white70,
-                            fontWeight: isSelected
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                                ? colorScheme.primary
+                                : colorScheme.outline.withValues(alpha: 0.3),
+                            width: isSelected ? 2 : 1,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            SizedBox(height: 3.h),
-
-            // Session notes
-            Text(
-              'Add notes (optional)',
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'How was the experience?',
-                hintStyle: TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12.sp,
-                ),
-                filled: true,
-                fillColor: Colors.white.withAlpha(51),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                  borderSide: const BorderSide(color: Colors.white),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                  borderSide: const BorderSide(color: Colors.white),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                  borderSide: const BorderSide(color: Colors.white, width: 2),
-                ),
-              ),
-            ),
-            SizedBox(height: 3.h),
-
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _isSaving ? null : widget.onDiscardSession,
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 1.5.h),
-                      side: const BorderSide(color: Colors.white),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              mood['emoji'],
+                              style: TextStyle(fontSize: 20.sp),
+                            ),
+                            SizedBox(height: 0.5.h),
+                            Text(
+                              mood['label'],
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurfaceVariant,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'Discard',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.sp,
-                      ),
-                    ),
+                    );
+                  }).toList(),
+                ),
+                SizedBox(height: 4.h),
+
+                // Session notes
+                Text(
+                  'Add notes (optional)',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(width: 2.w),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _handleSaveSession,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 1.5.h),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
-                      ),
-                    ),
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            'Save Session',
-                            style: TextStyle(
-                              color: const Color(0xFF1E88E5),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.bold,
+                SizedBox(height: 1.h),
+                TextFormField(
+                  controller: _notesController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'How was the experience?',
+                  ),
+                ),
+                SizedBox(height: 4.h),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: 28.w),
+                        child: OutlinedButton(
+                          onPressed: _isSaving ? null : widget.onDiscardSession,
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 5.w,
+                              vertical: 1.8.h,
                             ),
                           ),
-                  ),
+                          child: Text('Discard'),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 4.w),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _handleSaveSession,
+                        child: _isSaving
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text('Save Session'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

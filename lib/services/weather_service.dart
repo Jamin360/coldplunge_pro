@@ -29,15 +29,14 @@ class WeatherService {
 
       return {
         'temperature': (weatherData['temperature']['degrees'] as num).round(),
-        'feelsLike': (weatherData['feelsLikeTemperature']['degrees'] as num)
-            .round(),
+        'feelsLike':
+            (weatherData['feelsLikeTemperature']['degrees'] as num).round(),
         'humidity': weatherData['relativeHumidity'],
         'condition': _getWeatherCondition(weatherData['weatherCondition']),
         'location': locationName,
         'windSpeed': weatherData['wind']['speed']['value'],
         'pressure': weatherData['airPressure']['meanSeaLevelMillibars'],
-        'visibility':
-            weatherData['visibility']['distance'] *
+        'visibility': weatherData['visibility']['distance'] *
             1000, // Convert km to meters
         'uvIndex': weatherData['uvIndex'] ?? 0,
         'dewPoint': (weatherData['dewPoint']['degrees'] as num).round(),
@@ -95,8 +94,7 @@ class WeatherService {
         final placemark = placemarks.first;
 
         // Extract city with safer null handling - use non-nullable String
-        String city =
-            placemark.locality ??
+        String city = placemark.locality ??
             placemark.subAdministrativeArea ??
             placemark.administrativeArea ??
             'Unknown Location';

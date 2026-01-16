@@ -40,7 +40,7 @@ class _CommunityFeedState extends State<CommunityFeed>
       "type": "challenge",
       "isActive": true,
       "image":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_1834c53df-1762636875401.png",
+          "https://img.rocket.new/generatedImages/rocket_gen_img_179562485-1768447038399.png",
       "imageSemanticLabel": "Ice bath challenge badge with snowflake design",
     },
     {
@@ -48,7 +48,8 @@ class _CommunityFeedState extends State<CommunityFeed>
       "title": "Wim Hof Method",
       "type": "highlight",
       "isActive": false,
-      "image": "https://images.unsplash.com/photo-1645389413935-0376a9e6676a",
+      "image":
+          "https://img.rocket.new/generatedImages/rocket_gen_img_1290f1542-1766041961993.png",
       "imageSemanticLabel":
           "Man practicing breathing exercises in cold environment",
     },
@@ -57,7 +58,8 @@ class _CommunityFeedState extends State<CommunityFeed>
       "title": "Beginner Tips",
       "type": "highlight",
       "isActive": false,
-      "image": "https://images.unsplash.com/photo-1702265500624-13995c5937d8",
+      "image":
+          "https://img.rocket.new/generatedImages/rocket_gen_img_180aa420f-1766260854369.png",
       "imageSemanticLabel": "Instructional guide for cold plunge beginners",
     },
     {
@@ -65,7 +67,8 @@ class _CommunityFeedState extends State<CommunityFeed>
       "title": "Weekly Goals",
       "type": "challenge",
       "isActive": true,
-      "image": "https://images.unsplash.com/photo-1684089007679-512bec20368d",
+      "image":
+          "https://img.rocket.new/generatedImages/rocket_gen_img_151565ba0-1768447036376.png",
       "imageSemanticLabel": "Weekly challenge tracker with progress indicators",
     },
   ];

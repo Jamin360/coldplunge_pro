@@ -8,7 +8,6 @@ import '../../widgets/custom_bottom_bar.dart';
 import './widgets/active_challenge_widget.dart';
 import './widgets/challenge_card_widget.dart';
 import './widgets/challenge_filter_widget.dart';
-import './widgets/leaderboard_widget.dart';
 
 class Challenges extends StatefulWidget {
   const Challenges({super.key});
@@ -36,6 +35,9 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      setState(() {}); // Trigger rebuild when tab changes
+    });
     _loadData();
   }
 
@@ -83,6 +85,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             'timeLeft': daysLeft,
             'description': challengeData['description'],
             'image': challengeData['image_url'],
+            'isJoined': true, // Mark as joined since it's from userChallenges
           };
         }
 
@@ -137,21 +140,10 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             'isActive': true,
             'participants': challenge['participants_count'] ?? 0,
             'timeLeft': _calculateDaysLeft(challenge['end_date']),
+            'image': challenge['image_url'] ?? '',
+            'semanticLabel': _generateSemanticLabel(challenge),
           };
         }).toList();
-
-      case 'upcoming':
-        return _allChallenges
-            .where((c) => !userChallengeIds.contains(c['id']))
-            .map((c) => {
-                  ...c,
-                  'isJoined': false,
-                  'isActive': false,
-                  'progress': 0.0,
-                  'participants': c['participants_count'] ?? 0,
-                  'timeLeft': _calculateDaysLeft(c['end_date']),
-                })
-            .toList();
 
       case 'completed':
         return _userChallenges
@@ -165,6 +157,8 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             'isActive': false,
             'participants': challenge['participants_count'] ?? 0,
             'timeLeft': 'Completed',
+            'image': challenge['image_url'] ?? '',
+            'semanticLabel': _generateSemanticLabel(challenge),
           };
         }).toList();
 
@@ -178,23 +172,35 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             'isActive': !(uc['is_completed'] as bool? ?? false),
             'participants': challenge['participants_count'] ?? 0,
             'timeLeft': _calculateDaysLeft(challenge['end_date']),
+            'image': challenge['image_url'] ?? '',
+            'semanticLabel': _generateSemanticLabel(challenge),
           };
         }).toList();
 
         final notJoined = _allChallenges
             .where((c) => !userChallengeIds.contains(c['id']))
-            .map((c) => {
-                  ...c,
-                  'isJoined': false,
-                  'isActive': false,
-                  'progress': 0.0,
-                  'participants': c['participants_count'] ?? 0,
-                  'timeLeft': _calculateDaysLeft(c['end_date']),
-                })
+            .map(
+              (c) => {
+                ...c,
+                'isJoined': false,
+                'isActive': false,
+                'progress': 0.0,
+                'participants': c['participants_count'] ?? 0,
+                'timeLeft': _calculateDaysLeft(c['end_date']),
+                'image': c['image_url'] ?? '',
+                'semanticLabel': _generateSemanticLabel(c),
+              },
+            )
             .toList();
 
         return [...joined, ...notJoined];
     }
+  }
+
+  String _generateSemanticLabel(Map<String, dynamic> challenge) {
+    final title = challenge['title'] as String? ?? 'Challenge';
+    final difficulty = challenge['difficulty'] as String? ?? 'normal';
+    return '$title challenge - $difficulty difficulty level';
   }
 
   @override
@@ -203,65 +209,56 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: CustomAppBar(
-        title: 'Challenges',
-        showBackButton: false,
-        actions: [
-          IconButton(
-            onPressed: _showCreateChallengeDialog,
-            icon: CustomIconWidget(
-              iconName: 'add_circle_outline',
-              size: 24,
-              color: colorScheme.primary,
-            ),
-          ),
-          IconButton(
-            onPressed: _showSearchDialog,
-            icon: CustomIconWidget(
-              iconName: 'search',
-              size: 24,
-              color: colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF5F5F5),
+      appBar: CustomAppBar(title: 'Challenges', showBackButton: false),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? _buildErrorState()
               : Column(
                   children: [
-                    // Tab Bar
+                    SizedBox(height: 2.h), // Add margin from header
+
+                    // Tab Toggle - Simplified design
                     Container(
                       margin: EdgeInsets.symmetric(horizontal: 4.w),
+                      padding: EdgeInsets.all(0.5.w),
                       decoration: BoxDecoration(
-                        color: colorScheme.surface,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: colorScheme.outline.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        tabs: const [
-                          Tab(text: 'Challenges'),
-                          Tab(text: 'Leaderboard'),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
                         ],
-                        labelStyle: theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                        unselectedLabelStyle:
-                            theme.textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w400,
-                        ),
-                        indicator: BoxDecoration(
-                          color: colorScheme.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        padding: EdgeInsets.all(1.w),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _buildTabButton(
+                              context,
+                              'Challenges',
+                              _tabController.index == 0,
+                              () {
+                                _tabController.animateTo(0);
+                                setState(() {}); // Force UI update
+                              },
+                            ),
+                          ),
+                          Expanded(
+                            child: _buildTabButton(
+                              context,
+                              'Leaderboard',
+                              _tabController.index == 1,
+                              () {
+                                _tabController.animateTo(1);
+                                setState(() {}); // Force UI update
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
@@ -282,6 +279,32 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       bottomNavigationBar: CustomBottomBar(
         currentIndex: _currentBottomIndex,
         onTap: (index) => setState(() => _currentBottomIndex = index),
+      ),
+    );
+  }
+
+  Widget _buildTabButton(
+      BuildContext context, String label, bool isSelected, VoidCallback onTap) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 1.5.h),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: isSelected ? Colors.white : colorScheme.onSurfaceVariant,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -318,10 +341,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             ),
           ),
           SizedBox(height: 3.h),
-          ElevatedButton(
-            onPressed: _loadData,
-            child: const Text('Retry'),
-          ),
+          ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
         ],
       ),
     );
@@ -364,9 +384,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                         ? 'All Challenges'
                         : _selectedFilter == 'active'
                             ? 'Active Challenges'
-                            : _selectedFilter == 'upcoming'
-                                ? 'Upcoming Challenges'
-                                : 'Completed Challenges',
+                            : 'Completed Challenges',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -384,23 +402,24 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
 
             SizedBox(height: 2.h),
 
-            // Challenges List
+            // Challenges List - Changed to vertical scrolling
             _filteredChallenges.isEmpty
                 ? _buildEmptyState()
-                : SizedBox(
-                    height: 55.h,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: EdgeInsets.only(left: 4.w),
-                      itemCount: _filteredChallenges.length,
-                      itemBuilder: (context, index) {
-                        final challenge = _filteredChallenges[index];
-                        return ChallengeCardWidget(
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.symmetric(horizontal: 4.w),
+                    itemCount: _filteredChallenges.length,
+                    itemBuilder: (context, index) {
+                      final challenge = _filteredChallenges[index];
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 2.h),
+                        child: ChallengeCardWidget(
                           challenge: challenge,
                           onTap: () => _showChallengeDetails(challenge),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
 
             SizedBox(height: 4.h),
@@ -411,23 +430,43 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   }
 
   Widget _buildLeaderboardTab() {
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-            SizedBox(height: 2.h),
-            LeaderboardWidget(
-              leaderboardData: _leaderboardData,
-              currentUserPosition: _leaderboardData.indexWhere(
-                    (entry) => entry['isCurrentUser'] == true,
-                  ) +
-                  1,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Grayed out trophy icon
+          CustomIconWidget(
+            iconName: 'emoji_events',
+            size: 80,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+          ),
+          SizedBox(height: 3.h),
+
+          // Heading
+          Text(
+            'Leaderboard Coming Soon',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: colorScheme.onSurface,
             ),
-            SizedBox(height: 4.h),
-          ],
-        ),
+          ),
+          SizedBox(height: 1.5.h),
+
+          // Subtext
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            child: Text(
+              'Compete with other cold plungers and see how you rank!',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -470,12 +509,27 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   }
 
   void _showChallengeDetails([Map<String, dynamic>? challenge]) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildChallengeDetailsModal(challenge),
-    );
+    final selectedChallenge = challenge ?? _activeChallenge;
+
+    // Check if user has joined this challenge
+    final isJoined = selectedChallenge?['isJoined'] as bool? ?? false;
+
+    if (isJoined) {
+      // Navigate to Challenge Progress page
+      Navigator.pushNamed(
+        context,
+        AppRoutes.challengeProgress,
+        arguments: {'challengeId': selectedChallenge!['id'] as String},
+      ).then((_) => _loadData()); // Reload data when returning
+    } else {
+      // Show challenge details modal for joining
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _buildChallengeDetailsModal(selectedChallenge),
+      );
+    }
   }
 
   Widget _buildChallengeDetailsModal(Map<String, dynamic>? challenge) {
@@ -760,75 +814,5 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
         );
       }
     }
-  }
-
-  void _showCreateChallengeDialog() {
-    final theme = Theme.of(context);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Create Custom Challenge',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Text(
-          'Create your own challenge and invite friends to join you in your cold plunge journey.',
-          style: theme.textTheme.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // Navigate to create challenge screen
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSearchDialog() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Search Challenges',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: TextField(
-          decoration: InputDecoration(
-            hintText: 'Search by name, difficulty, or type...',
-            prefixIcon: CustomIconWidget(
-              iconName: 'search',
-              size: 20,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Search'),
-          ),
-        ],
-      ),
-    );
   }
 }

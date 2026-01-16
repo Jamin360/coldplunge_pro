@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../../core/app_export.dart';
-import '../../../widgets/custom_icon_widget.dart';
-
 class ChallengeFilterWidget extends StatelessWidget {
   final String selectedFilter;
   final Function(String) onFilterChanged;
@@ -20,14 +17,13 @@ class ChallengeFilterWidget extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     final filters = [
-      {'key': 'all', 'label': 'All', 'icon': 'apps'},
-      {'key': 'active', 'label': 'Active', 'icon': 'play_circle'},
-      {'key': 'upcoming', 'label': 'Upcoming', 'icon': 'schedule'},
-      {'key': 'completed', 'label': 'Completed', 'icon': 'check_circle'},
+      {'key': 'all', 'label': 'All'},
+      {'key': 'active', 'label': 'Active'},
+      {'key': 'completed', 'label': 'Completed'},
     ];
 
     return Container(
-      height: 6.h,
+      height: 5.h,
       margin: EdgeInsets.symmetric(horizontal: 4.w),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -39,49 +35,37 @@ class ChallengeFilterWidget extends StatelessWidget {
 
           return GestureDetector(
             onTap: () => onFilterChanged(filter['key'] as String),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 1.2.h),
               decoration: BoxDecoration(
-                color: isSelected ? colorScheme.primary : colorScheme.surface,
+                color: isSelected ? colorScheme.primary : Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.outline.withValues(alpha: 0.3),
-                ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
                           color: colorScheme.primary.withValues(alpha: 0.2),
-                          blurRadius: 8,
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ]
-                    : null,
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CustomIconWidget(
-                    iconName: filter['icon'] as String,
-                    size: 18,
+              child: Center(
+                child: Text(
+                  filter['label'] as String,
+                  style: theme.textTheme.labelMedium?.copyWith(
                     color: isSelected
-                        ? colorScheme.onPrimary
+                        ? Colors.white
                         : colorScheme.onSurfaceVariant,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   ),
-                  SizedBox(width: 1.w),
-                  Text(
-                    filter['label'] as String,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: isSelected
-                          ? colorScheme.onPrimary
-                          : colorScheme.onSurfaceVariant,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );

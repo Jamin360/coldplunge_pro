@@ -32,7 +32,7 @@ class _CommentBottomSheetWidgetState extends State<CommentBottomSheetWidget>
       "id": 1,
       "userName": "Sarah Chen",
       "userAvatar":
-          "https://images.unsplash.com/photo-1733875332103-d05a6beaa6b4",
+          "https://img.rocket.new/generatedImages/rocket_gen_img_1af54ceb1-1763295330262.png",
       "userAvatarSemanticLabel":
           "Asian woman with long black hair smiling at camera wearing white top",
       "comment": "Amazing dedication! That water looks freezing 🥶",
@@ -44,7 +44,7 @@ class _CommentBottomSheetWidgetState extends State<CommentBottomSheetWidget>
       "id": 2,
       "userName": "Mike Rodriguez",
       "userAvatar":
-          "https://images.unsplash.com/photo-1623967484275-7d59e4b9f151",
+          "https://img.rocket.new/generatedImages/rocket_gen_img_13539cf1a-1763294982283.png",
       "userAvatarSemanticLabel":
           "Hispanic man with beard wearing blue shirt outdoors",
       "comment":
@@ -70,7 +70,7 @@ class _CommentBottomSheetWidgetState extends State<CommentBottomSheetWidget>
       "id": 4,
       "userName": "David Kim",
       "userAvatar":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_101a30914-1762273360762.png",
+          "https://img.rocket.new/generatedImages/rocket_gen_img_182106f63-1763294687350.png",
       "userAvatarSemanticLabel":
           "Asian man with glasses wearing dark sweater in professional setting",
       "comment":

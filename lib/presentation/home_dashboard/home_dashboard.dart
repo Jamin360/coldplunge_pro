@@ -24,8 +24,6 @@ class _HomeDashboardState extends State<HomeDashboard>
     with TickerProviderStateMixin {
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       GlobalKey<RefreshIndicatorState>();
-  late AnimationController _fabAnimationController;
-  late Animation<double> _fabScaleAnimation;
   bool _isLoading = false;
 
   // Data from Supabase
@@ -38,24 +36,11 @@ class _HomeDashboardState extends State<HomeDashboard>
   @override
   void initState() {
     super.initState();
-    _fabAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fabScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fabAnimationController,
-        curve: Curves.elasticOut,
-      ),
-    );
-    _fabAnimationController.forward();
-
     _loadDashboardData();
   }
 
   @override
   void dispose() {
-    _fabAnimationController.dispose();
     super.dispose();
   }
 
@@ -411,36 +396,6 @@ class _HomeDashboardState extends State<HomeDashboard>
         title: 'ColdPlunge Pro',
         showBackButton: false,
         actions: [
-          Container(
-            margin: EdgeInsets.only(right: 2.w),
-            padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
-            decoration: BoxDecoration(
-              color: AppTheme.successLight.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.successLight.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomIconWidget(
-                  iconName: 'local_fire_department',
-                  color: AppTheme.successLight,
-                  size: 16,
-                ),
-                SizedBox(width: 1.w),
-                Text(
-                  '$_currentStreak',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppTheme.successLight,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
           IconButton(
             icon: CustomIconWidget(
               iconName: 'logout',
@@ -488,6 +443,56 @@ class _HomeDashboardState extends State<HomeDashboard>
                         ],
                       ),
                     ),
+
+                    // Start Plunge Button (moved from floating position)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4.w),
+                      child: Container(
+                        width: double.infinity,
+                        height: 8.5.h,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD97706), // Solid muted amber
+                          borderRadius: BorderRadius.circular(16.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFD97706)
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: _startPlunge,
+                            borderRadius: BorderRadius.circular(16.0),
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CustomIconWidget(
+                                    iconName: 'play_arrow',
+                                    color: Colors.white,
+                                    size: 28,
+                                  ),
+                                  SizedBox(width: 2.w),
+                                  Text(
+                                    'Start Plunge',
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 3.h),
 
                     // Quick Stats Cards
                     Container(
@@ -590,7 +595,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                       child: _recentSessions.isEmpty
                           ? _buildEmptySessionsState()
                           : Column(
-                              children: _recentSessions.map((session) {
+                              children: _recentSessions.take(5).map((session) {
                                 return RecentSessionCardWidget(
                                   session: session,
                                   onView: () => _viewSessionDetails(session),
@@ -602,38 +607,11 @@ class _HomeDashboardState extends State<HomeDashboard>
                             ),
                     ),
 
-                    SizedBox(height: 10.h), // Bottom padding for FAB
+                    SizedBox(height: 3.h),
                   ],
                 ),
         ),
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: _fabScaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _fabScaleAnimation.value,
-            child: FloatingActionButton.extended(
-              onPressed: _startPlunge,
-              backgroundColor: AppTheme.accentLight,
-              foregroundColor: Colors.white,
-              elevation: 6,
-              icon: CustomIconWidget(
-                iconName: 'play_arrow',
-                color: Colors.white,
-                size: 24,
-              ),
-              label: Text(
-                'Start Plunge',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: CustomBottomBar(
         currentIndex: 0,
         onTap: (index) {
