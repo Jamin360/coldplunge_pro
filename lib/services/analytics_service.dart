@@ -147,8 +147,9 @@ class AnalyticsService {
       }
 
       // Reverse to show oldest to newest for chart progression
-      final sessions =
-          List<Map<String, dynamic>>.from(response).reversed.toList();
+      final sessions = List<Map<String, dynamic>>.from(
+        response,
+      ).reversed.toList();
 
       // Format data for chart display
       List<Map<String, dynamic>> tempData = [];
@@ -165,12 +166,13 @@ class AnalyticsService {
         final dateLabel = daysAgo == 0
             ? 'Today'
             : daysAgo == 1
-                ? 'Yesterday'
-                : '${daysAgo}d ago';
+            ? 'Yesterday'
+            : '${daysAgo}d ago';
 
         // Convert temperature to double for chart compatibility
-        final tempValue =
-            (temp is int) ? temp.toDouble() : (temp as num).toDouble();
+        final tempValue = (temp is int)
+            ? temp.toDouble()
+            : (temp as num).toDouble();
 
         tempData.add({
           'session': sessionLabel,
@@ -266,21 +268,21 @@ class AnalyticsService {
       final avgPreMoodScore = moodData.isEmpty
           ? 0.0
           : moodData
-                  .map((e) => e['preMoodScore'] as int)
-                  .reduce((a, b) => a + b) /
-              moodData.length;
+                    .map((e) => e['preMoodScore'] as int)
+                    .reduce((a, b) => a + b) /
+                moodData.length;
       final avgPostMoodScore = moodData.isEmpty
           ? 0.0
           : moodData
-                  .map((e) => e['postMoodScore'] as int)
-                  .reduce((a, b) => a + b) /
-              moodData.length;
+                    .map((e) => e['postMoodScore'] as int)
+                    .reduce((a, b) => a + b) /
+                moodData.length;
       final avgImprovement = moodData.isEmpty
           ? 0.0
           : moodData
-                  .map((e) => e['improvement'] as int)
-                  .reduce((a, b) => a + b) /
-              moodData.length;
+                    .map((e) => e['improvement'] as int)
+                    .reduce((a, b) => a + b) /
+                moodData.length;
 
       // Find most common moods with null safety
       final mostCommonPreMood = _findMostCommonMood(
@@ -293,10 +295,12 @@ class AnalyticsService {
       );
 
       // Calculate mood consistency (how often moods improve)
-      final improvementCount =
-          moodData.where((m) => (m['improvement'] as int) > 0).length;
-      final consistencyRate =
-          moodData.isEmpty ? 0.0 : improvementCount / moodData.length;
+      final improvementCount = moodData
+          .where((m) => (m['improvement'] as int) > 0)
+          .length;
+      final consistencyRate = moodData.isEmpty
+          ? 0.0
+          : improvementCount / moodData.length;
 
       // Generate weekly trend data for charts
       final weeklyTrends = _generateWeeklyMoodTrends(moodData);
@@ -407,11 +411,13 @@ class AnalyticsService {
 
     weeklyGroups.entries.forEach((entry) {
       final weekData = entry.value;
-      final avgPre = weekData
+      final avgPre =
+          weekData
               .map((m) => m['preMoodScore'] as int)
               .reduce((a, b) => a + b) /
           weekData.length;
-      final avgPost = weekData
+      final avgPost =
+          weekData
               .map((m) => m['postMoodScore'] as int)
               .reduce((a, b) => a + b) /
           weekData.length;
@@ -473,14 +479,12 @@ class AnalyticsService {
     // Total sessions from profile (synced via update_user_stats trigger)
     final totalSessions = profile['total_sessions'] ?? 0;
 
-    // Current streak from profile
-    final currentStreak = profile['streak_count'] ?? 0;
-
     // Calculate average duration from actual session data
     double avgDuration = 0.0;
     if (sessions.isNotEmpty) {
-      final durations =
-          sessions.map<int>((session) => session['duration'] ?? 0).toList();
+      final durations = sessions
+          .map<int>((session) => session['duration'] ?? 0)
+          .toList();
       avgDuration = durations.reduce((a, b) => a + b) / durations.length;
     }
 
@@ -501,12 +505,88 @@ class AnalyticsService {
 
     return {
       'totalSessions': totalSessions,
-      'currentStreak': currentStreak,
+      'currentStreak': 0, // Calculated separately with calculateCurrentStreak
       'avgDuration': avgDuration,
       'coldestTemp': coldestTemp,
       'weeklyGoal': weeklyGoal,
       'personalBestDuration': personalBestDuration,
     };
+  }
+
+  /// Calculate current streak by checking consecutive days with sessions
+  /// Returns the number of consecutive days with at least one session
+  Future<int> calculateCurrentStreak() async {
+    try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return 0;
+
+      // Get all user sessions ordered by date (descending)
+      final response = await _supabase
+          .from('plunge_sessions')
+          .select('created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      if (response.isEmpty) return 0;
+
+      // Extract unique dates (only the date part, not time)
+      final sessionDates = <DateTime>{};
+      for (final session in response) {
+        final createdAt = DateTime.parse(session['created_at'] as String);
+        final dateOnly = DateTime(
+          createdAt.year,
+          createdAt.month,
+          createdAt.day,
+        );
+        sessionDates.add(dateOnly);
+      }
+
+      // Sort dates in descending order
+      final sortedDates = sessionDates.toList()..sort((a, b) => b.compareTo(a));
+
+      // Start counting from today
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final yesterday = todayDate.subtract(const Duration(days: 1));
+
+      int streak = 0;
+      DateTime currentDate;
+
+      // Determine starting point
+      if (sortedDates.first.isAtSameMomentAs(todayDate)) {
+        // Session exists today, start from today
+        currentDate = todayDate;
+        streak = 1;
+      } else if (sortedDates.first.isAtSameMomentAs(yesterday)) {
+        // No session today but one yesterday, start from yesterday
+        currentDate = yesterday;
+        streak = 1;
+      } else {
+        // No recent sessions, streak is 0
+        return 0;
+      }
+
+      // Count backwards checking for consecutive days
+      int dateIndex = 1; // Start from second date since we counted the first
+      while (dateIndex < sortedDates.length) {
+        final previousDate = currentDate.subtract(const Duration(days: 1));
+
+        if (sortedDates[dateIndex].isAtSameMomentAs(previousDate)) {
+          // Found session on consecutive day
+          streak++;
+          currentDate = previousDate;
+          dateIndex++;
+        } else {
+          // Gap found, streak ends
+          break;
+        }
+      }
+
+      return streak;
+    } catch (e) {
+      print('Error calculating streak: $e');
+      return 0;
+    }
   }
 
   // Helper methods

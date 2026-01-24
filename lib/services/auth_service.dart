@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import './analytics_service.dart';
 
 class AuthService {
   static AuthService? _instance;
@@ -41,10 +42,7 @@ class AuthService {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name': fullName,
-          'avatar_url': avatarUrl ?? '',
-        },
+        data: {'full_name': fullName, 'avatar_url': avatarUrl ?? ''},
       );
       return response;
     } catch (error) {
@@ -126,10 +124,13 @@ class AuthService {
     if (!isAuthenticated) return;
 
     try {
-      await _client.from('user_profiles').update({
-        'streak_count': newStreak,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', currentUser!.id);
+      await _client
+          .from('user_profiles')
+          .update({
+            'streak_count': newStreak,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', currentUser!.id);
     } catch (error) {
       throw Exception('Streak update failed: $error');
     }
@@ -171,12 +172,17 @@ class AuthService {
       // Get basic profile data
       final profile = await getCurrentUserProfile();
 
+      // Calculate actual current streak from session history
+      final currentStreak = await AnalyticsService().calculateCurrentStreak();
+
       // Get this week's sessions
       final now = DateTime.now();
       final weekStart = now.subtract(Duration(days: now.weekday - 1));
-      final weekStartStr =
-          DateTime(weekStart.year, weekStart.month, weekStart.day)
-              .toIso8601String();
+      final weekStartStr = DateTime(
+        weekStart.year,
+        weekStart.month,
+        weekStart.day,
+      ).toIso8601String();
 
       final weekSessions = await _client
           .from('plunge_sessions')
@@ -195,7 +201,7 @@ class AuthService {
           : '0.0';
 
       return {
-        'streak_count': profile?['streak_count'] ?? 0,
+        'streak_count': currentStreak,
         'total_sessions': profile?['total_sessions'] ?? 0,
         'personal_best_duration': profile?['personal_best_duration'] ?? 0,
         'week_sessions': weekCount,

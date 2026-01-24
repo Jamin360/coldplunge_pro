@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -60,6 +61,24 @@ class SessionHistoryCardWidget extends StatelessWidget {
     }
   }
 
+  void _shareSession() {
+    final location = session['location'] as String;
+    final duration = session['duration'] as int;
+    final temperature = session['temperature'] as int;
+    final postMood = session['post_mood'] as String?;
+    final notes = session['notes'] as String?;
+
+    final shareText = '🧊 Cold Plunge Complete!\n\n'
+        '📍 Location: $location\n'
+        '⏱️ Duration: ${duration}s\n'
+        '🌡️ Temperature: ${temperature}°F\n'
+        '💭 Mood: ${postMood ?? 'Not recorded'}\n'
+        '${notes != null && notes.isNotEmpty ? '📝 Notes: $notes\n\n' : '\n'}'
+        'Tracked with ColdPlunge Pro 💪';
+
+    Share.share(shareText);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -74,8 +93,22 @@ class SessionHistoryCardWidget extends StatelessWidget {
 
     return Dismissible(
       key: Key(session['id'] as String),
-      direction: DismissDirection.endToStart,
+      direction: DismissDirection.horizontal,
       background: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+        decoration: BoxDecoration(
+          color: AppTheme.warningLight,
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: EdgeInsets.only(left: 4.w),
+        child: const CustomIconWidget(
+          iconName: 'share',
+          color: Colors.white,
+          size: 24,
+        ),
+      ),
+      secondaryBackground: Container(
         margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
         decoration: BoxDecoration(
           color: AppTheme.errorLight,
@@ -90,32 +123,39 @@ class SessionHistoryCardWidget extends StatelessWidget {
         ),
       ),
       confirmDismiss: (direction) async {
-        final shouldDelete = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Session'),
-            content: Text('Delete session from $location?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.errorLight,
+        if (direction == DismissDirection.startToEnd) {
+          // Share action
+          _shareSession();
+          return false;
+        } else {
+          // Delete action
+          final shouldDelete = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Delete Session'),
+              content: Text('Delete session from $location?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
                 ),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        );
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.errorLight,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
 
-        if (shouldDelete == true) {
-          onDelete();
+          if (shouldDelete == true) {
+            onDelete();
+          }
+
+          return false;
         }
-
-        return false;
       },
       child: GestureDetector(
         onTap: onTap,

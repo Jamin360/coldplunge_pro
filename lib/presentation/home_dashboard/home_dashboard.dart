@@ -101,10 +101,9 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   void _shareSession(Map<String, dynamic> session) {
     HapticFeedback.lightImpact();
-    // TODO: Implement share functionality
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Sharing session from ${session['location']}'),
+        content: Text('Share functionality coming soon'),
         behavior: SnackBarBehavior.floating,
       ),
     );
