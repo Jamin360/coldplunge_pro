@@ -94,7 +94,7 @@ class AnalyticsService {
               .lt('created_at', endOfDay.toIso8601String());
 
           frequencyData.add({
-            'day': _getDayName(date.weekday),
+            'day': _getDayName(date.weekday % 7),
             'sessions': response.length,
             'date': date,
           });

@@ -397,7 +397,8 @@ class SessionService {
 
         final daySessions = sessions.where((session) {
           final sessionDate = DateTime.parse(session['created_at']);
-          return sessionDate.isAfter(dayStart) && sessionDate.isBefore(dayEnd);
+          return sessionDate.isAfter(dayStart.subtract(const Duration(microseconds: 1))) && 
+                 sessionDate.isBefore(dayEnd);
         }).toList();
 
         final totalDuration = daySessions.fold<int>(
