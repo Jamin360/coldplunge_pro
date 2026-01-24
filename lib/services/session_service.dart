@@ -371,23 +371,27 @@ class SessionService {
     }
 
     try {
-      // Get sessions from the last 7 days
+      // Get current week starting from Sunday
       final now = DateTime.now();
-      final weekStart = now.subtract(const Duration(days: 6));
+      // Calculate days since Sunday (0=Sunday, 1=Monday, etc.)
+      final daysSinceSunday = now.weekday % 7;
+      final weekStart = now.subtract(Duration(days: daysSinceSunday));
+      final weekStartDay = DateTime(weekStart.year, weekStart.month, weekStart.day);
+      final weekEnd = weekStartDay.add(const Duration(days: 7));
 
       final sessions = await getUserSessions(
-        startDate: DateTime(weekStart.year, weekStart.month, weekStart.day),
-        endDate: now,
+        startDate: weekStartDay,
+        endDate: weekEnd,
         orderBy: 'created_at',
         ascending: true,
       );
 
-      // Group sessions by day
-      final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      // Group sessions by day - starting with Sunday
+      final dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       final weeklyData = <Map<String, dynamic>>[];
 
       for (int i = 0; i < 7; i++) {
-        final day = weekStart.add(Duration(days: i));
+        final day = weekStartDay.add(Duration(days: i));
         final dayStart = DateTime(day.year, day.month, day.day);
         final dayEnd = dayStart.add(const Duration(days: 1));
 
@@ -402,7 +406,7 @@ class SessionService {
         );
 
         weeklyData.add({
-          'day': dayLabels[day.weekday - 1],
+          'day': dayLabels[i],
           'duration': totalDuration,
           'hasPlunge': daySessions.isNotEmpty,
           'sessionCount': daySessions.length,
