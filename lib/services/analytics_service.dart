@@ -94,7 +94,7 @@ class AnalyticsService {
               .lt('created_at', endOfDay.toIso8601String());
 
           frequencyData.add({
-            'day': _getDayName(date.weekday),
+            'day': _getDayName(date.weekday % 7),
             'sessions': response.length,
             'date': date,
           });
@@ -428,10 +428,12 @@ class AnalyticsService {
     return weeklyTrends..sort((a, b) => a['week'].compareTo(b['week']));
   }
 
-  /// Get week number from date
+  /// Get week number from date (Sunday-based weeks)
   int _getWeekNumber(DateTime date) {
-    final dayOfYear = date.difference(DateTime(date.year, 1, 1)).inDays;
-    return ((dayOfYear - date.weekday + 10) / 7).floor();
+    // Adjust for Sunday start: add 1 day for calculation
+    final adjustedDate = date.add(const Duration(days: 1));
+    final dayOfYear = adjustedDate.difference(DateTime(adjustedDate.year, 1, 1)).inDays;
+    return ((dayOfYear - adjustedDate.weekday + 10) / 7).floor();
   }
 
   /// Calculate mood distribution percentages
@@ -585,13 +587,19 @@ class AnalyticsService {
 
   // Helper methods
   DateTime _getWeekStartDate(DateTime date) {
-    final weekday = date.weekday;
-    return date.subtract(Duration(days: weekday - 1));
+    // Changed to start week on Sunday instead of Monday
+    // weekday: 1=Monday, 7=Sunday
+    // Use modulo 7 to get 0 for Sunday, 1 for Monday, etc.
+    final weekday = date.weekday % 7;
+    return date.subtract(Duration(days: weekday));
   }
 
   String _getDayName(int weekday) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[weekday - 1];
+    // Updated to start with Sunday
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // weekday: 1=Monday, 7=Sunday
+    // Convert to 0=Sunday, 1=Monday for array indexing
+    return days[weekday % 7];
   }
 
   // Export data methods

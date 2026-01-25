@@ -175,9 +175,12 @@ class AuthService {
       // Calculate actual current streak from session history
       final currentStreak = await AnalyticsService().calculateCurrentStreak();
 
-      // Get this week's sessions
+      // Get this week's sessions (starting Sunday)
       final now = DateTime.now();
-      final weekStart = now.subtract(Duration(days: now.weekday - 1));
+      // Changed to start week on Sunday instead of Monday
+      // weekday: 1=Monday, 7=Sunday
+      // Use modulo 7 to get 0 for Sunday
+      final weekStart = now.subtract(Duration(days: now.weekday % 7));
       final weekStartStr = DateTime(
         weekStart.year,
         weekStart.month,
