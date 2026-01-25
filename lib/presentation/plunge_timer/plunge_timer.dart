@@ -476,6 +476,11 @@ class _PlungeTimerState extends State<PlungeTimer>
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
+                            // Transparent placeholder to balance the back button
+                            SizedBox(
+                              width: 44,
+                              height: 44,
+                            ),
                           ],
                         ),
                       ),

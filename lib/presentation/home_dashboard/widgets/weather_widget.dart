@@ -228,46 +228,6 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                 ),
               ],
             ),
-            SizedBox(height: 2.h),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(3.w),
-              decoration: BoxDecoration(
-                color: _getPlungeRecommendationColor(
-                        _weatherData!['temperature'] as int)
-                    .withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _getPlungeRecommendationColor(
-                          _weatherData!['temperature'] as int)
-                      .withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  CustomIconWidget(
-                    iconName: _getPlungeRecommendationIcon(
-                        _weatherData!['temperature'] as int),
-                    color: _getPlungeRecommendationColor(
-                        _weatherData!['temperature'] as int),
-                    size: 16,
-                  ),
-                  SizedBox(width: 2.w),
-                  Expanded(
-                    child: Text(
-                      _getPlungeRecommendation(
-                          _weatherData!['temperature'] as int),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: _getPlungeRecommendationColor(
-                            _weatherData!['temperature'] as int),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

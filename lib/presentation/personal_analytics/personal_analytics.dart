@@ -925,9 +925,16 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
     if (validTemps.isEmpty) return 30;
 
     final minTemp = validTemps.reduce((a, b) => a < b ? a : b);
-    // Round down to nearest multiple of 5 for clean labels
-    final roundedMin = ((minTemp - 5) / 5).floor() * 5;
-    return roundedMin.clamp(0, 150);
+    final maxTemp = validTemps.reduce((a, b) => a > b ? a : b);
+    final range = maxTemp - minTemp;
+
+    // Use interval of 10 for larger ranges, 5 for smaller ranges
+    final interval = range > 20 ? 10 : 5;
+
+    // Round down to nearest interval, with padding
+    final roundedMin = ((minTemp - interval) ~/ interval) * interval;
+    // Only prevent negative temperatures, don't force 0
+    return roundedMin < 0 ? 0 : roundedMin;
   }
 
   int _getMaxTemperature() {
@@ -940,10 +947,18 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
 
     if (validTemps.isEmpty) return 70;
 
+    final minTemp = validTemps.reduce((a, b) => a < b ? a : b);
     final maxTemp = validTemps.reduce((a, b) => a > b ? a : b);
-    // Round up to nearest multiple of 5 for clean labels
-    final roundedMax = ((maxTemp + 5) / 5).ceil() * 5;
-    return roundedMax.clamp(40, 150);
+    final range = maxTemp - minTemp;
+
+    // Use interval of 10 for larger ranges, 5 for smaller ranges
+    final interval = range > 20 ? 10 : 5;
+
+    // Round up to nearest interval, with padding
+    final roundedMax = ((maxTemp + interval) / interval).ceil() * interval;
+    // Ensure max is at least 20 degrees above min for readable chart
+    final calculatedMin = _getMinTemperature();
+    return roundedMax < (calculatedMin + 20) ? calculatedMin + 20 : roundedMax;
   }
 
   void _showComingSoonDialog(BuildContext context) {

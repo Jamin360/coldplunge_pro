@@ -11,14 +11,23 @@ class WeeklyProgressChartWidget extends StatelessWidget {
 
   const WeeklyProgressChartWidget({super.key, required this.weeklyData});
 
-  // Calculate dynamic maxY based on data to prevent overflow
+  // Calculate dynamic maxY based on data, rounded up to next interval
   double _calculateMaxY() {
     if (weeklyData.isEmpty) return 180.0; // Default to 3 minutes
 
     final durations =
         weeklyData.map((data) => (data['duration'] as num).toDouble()).toList();
 
-    return ChartUtils.calculateMaxY(durations, minRange: 180.0);
+    final maxDuration = durations.reduce((a, b) => a > b ? a : b);
+
+    // Ensure minimum of 3 minutes for calculation
+    final effectiveMax = maxDuration < 180.0 ? 180.0 : maxDuration;
+    final interval = ChartUtils.calculateDurationInterval(effectiveMax);
+
+    // Round up to the next interval: maxY = ceil(maxDuration / interval) * interval
+    final roundedMax = (effectiveMax / interval).ceil() * interval;
+
+    return roundedMax.toDouble();
   }
 
   // Calculate optimal interval based on maxY
@@ -145,15 +154,20 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        reservedSize: 50,
+                        reservedSize: 45,
                         interval: _calculateInterval(),
                         getTitlesWidget: (double value, TitleMeta meta) {
+                          final interval = _calculateInterval();
+                          // Only show labels that are exactly divisible by the interval
+                          if (value % interval != 0) {
+                            return const SizedBox.shrink();
+                          }
                           return SideTitleWidget(
                             axisSide: meta.axisSide,
                             fitInside: const SideTitleFitInsideData(
                               enabled: true,
                               axisPosition: 0,
-                              parentAxisSize: 50,
+                              parentAxisSize: 45,
                               distanceFromEdge: 0,
                             ),
                             child: Text(

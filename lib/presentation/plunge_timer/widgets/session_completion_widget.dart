@@ -83,7 +83,7 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
       position: _slideAnimation,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(6.w),
+        padding: EdgeInsets.only(left: 6.w, right: 6.w, top: 6.w, bottom: 3.w),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -96,6 +96,7 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
           ],
         ),
         child: SafeArea(
+          bottom: false,
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -277,40 +278,20 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
                 ),
                 SizedBox(height: 4.h),
 
-                // Action buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: 28.w),
-                        child: OutlinedButton(
-                          onPressed: _isSaving ? null : widget.onDiscardSession,
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 5.w,
-                              vertical: 1.8.h,
-                            ),
-                          ),
-                          child: Text('Discard'),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 4.w),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _handleSaveSession,
-                        child: _isSaving
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Text('Save Session'),
-                      ),
-                    ),
-                  ],
+                // Full-width Save Session button
+                SizedBox(
+                  width: double.infinity,
+                  height: 70,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _handleSaveSession,
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Text('Save Session'),
+                  ),
                 ),
               ],
             ),

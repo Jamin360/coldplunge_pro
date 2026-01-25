@@ -111,7 +111,7 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
       position: _slideAnimation,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(6.w),
+        padding: EdgeInsets.only(left: 6.w, right: 6.w, top: 6.w, bottom: 3.w),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -124,6 +124,7 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
           ],
         ),
         child: SafeArea(
+          bottom: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

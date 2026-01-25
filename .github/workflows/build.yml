@@ -1,0 +1,23 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          
+      - run: flutter pub get
+      
+      - run: flutter build apk --release --dart-define=SUPABASE_URL=https://achwyehtsjakhhazmsem.supabase.co --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjaHd5ZWh0c2pha2hoYXptc2VtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MjI0NjgsImV4cCI6MjA3ODE5ODQ2OH0.6Zsndv_LDEmfB3DNlIXduw3ejm0RDMt8ikgdY8OkzoQ
+        
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk

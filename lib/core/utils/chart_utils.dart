@@ -45,50 +45,41 @@ class ChartUtils {
     return max(roundedMax, minRange);
   }
 
-  /// Format duration in seconds to clean string (0s, 30s, 1m, 1m30s, 2m, etc.)
+  /// Format duration in seconds to clean string for Y-axis (0m, 1m, 2m, etc.)
+  /// Always shows whole minutes only, no seconds
   static String formatDurationLabel(double seconds) {
-    if (seconds == 0) return '0s';
-
-    final totalSeconds = seconds.toInt();
-    if (totalSeconds < 60) {
-      return '${totalSeconds}s';
-    }
-
-    final minutes = totalSeconds ~/ 60;
-    final remainingSeconds = totalSeconds % 60;
-
-    if (remainingSeconds == 0) {
-      return '${minutes}m';
-    } else {
-      return '${minutes}m${remainingSeconds}s';
-    }
+    final minutes = (seconds / 60).round();
+    return '${minutes}m';
   }
 
   /// Calculate optimal interval for duration charts (Weekly Progress)
-  /// Returns clean intervals like 30s, 1m, 1m30s, 2m, 2m30s, 3m
+  /// Returns clean intervals in whole minutes only (60s, 120s, 180s, etc.)
   static double calculateDurationInterval(double maxDuration) {
-    if (maxDuration <= 0) return 30.0;
+    if (maxDuration <= 0) return 60.0; // Default to 1 minute
 
-    // Calculate base interval for 4-5 labels
-    final rawInterval = maxDuration / 4;
+    // Convert to minutes and round up
+    final maxMinutes = (maxDuration / 60).ceil();
 
-    // Round to nice duration intervals
-    if (rawInterval <= 30) {
-      return 30.0; // 30 seconds
-    } else if (rawInterval <= 60) {
-      return 60.0; // 1 minute
-    } else if (rawInterval <= 90) {
-      return 90.0; // 1m30s
-    } else if (rawInterval <= 120) {
-      return 120.0; // 2 minutes
-    } else if (rawInterval <= 150) {
-      return 150.0; // 2m30s
-    } else if (rawInterval <= 180) {
-      return 180.0; // 3 minutes
+    // Calculate interval to get 4-6 labels
+    final rawInterval = maxMinutes / 5;
+
+    // Round to whole minutes only
+    int minuteInterval;
+    if (rawInterval <= 1) {
+      minuteInterval = 1; // 1 minute intervals
+    } else if (rawInterval <= 2) {
+      minuteInterval = 2; // 2 minute intervals
+    } else if (rawInterval <= 3) {
+      minuteInterval = 3; // 3 minute intervals
+    } else if (rawInterval <= 5) {
+      minuteInterval = 5; // 5 minute intervals
     } else {
-      // For longer durations, round to nearest minute
-      return (rawInterval / 60).ceil() * 60.0;
+      // Round up to nearest 5 minutes for larger values
+      minuteInterval = ((rawInterval / 5).ceil() * 5).toInt();
     }
+
+    // Convert back to seconds
+    return (minuteInterval * 60).toDouble();
   }
 
   /// Format temperature to clean string (whole number only - no duplicate °F)
