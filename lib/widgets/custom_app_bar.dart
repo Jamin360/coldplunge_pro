@@ -178,9 +178,6 @@ class CustomTimerAppBar extends StatelessWidget implements PreferredSizeWidget {
     required VoidCallback? onTap,
     required Color color,
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return GestureDetector(
       onTap: () {
         HapticFeedback.mediumImpact();

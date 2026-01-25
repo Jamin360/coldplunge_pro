@@ -31,8 +31,8 @@ class CustomBottomBar extends StatelessWidget {
       ),
       child: SafeArea(
         child: Container(
-          height: 80,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          height: 70,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -107,14 +107,14 @@ class CustomBottomBar extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? colorScheme.primary.withValues(alpha: 0.1)
@@ -123,17 +123,18 @@ class CustomBottomBar extends StatelessWidget {
                 ),
                 child: Icon(
                   isSelected ? activeIcon : icon,
-                  size: 24,
+                  size: 22,
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               AnimatedDefaultTextStyle(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 style: theme.textTheme.labelSmall!.copyWith(
+                  fontSize: 11,
                   color: isSelected
                       ? colorScheme.primary
                       : colorScheme.onSurfaceVariant,

@@ -96,9 +96,6 @@ class LeaderboardWidget extends StatelessWidget {
   }
 
   Widget _buildPodium(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Container(
       padding: EdgeInsets.all(4.w),
       child: Row(

@@ -29,7 +29,6 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _allChallenges = [];
   List<Map<String, dynamic>> _userChallenges = [];
   Map<String, dynamic>? _activeChallenge;
-  List<Map<String, dynamic>> _leaderboardData = [];
 
   @override
   void initState() {
@@ -52,17 +51,14 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
       final results = await Future.wait([
         _challengeService.getActiveChallenges(),
         _challengeService.getUserActiveChallenges(),
-        _challengeService.getGlobalLeaderboard(),
       ]);
 
       final allChallenges = results[0];
       final userChallenges = results[1];
-      final leaderboard = results[2];
 
       setState(() {
         _allChallenges = allChallenges;
         _userChallenges = userChallenges;
-        _leaderboardData = leaderboard;
 
         // Find active challenge (first user challenge with highest progress)
         if (userChallenges.isNotEmpty) {
@@ -205,9 +201,6 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: CustomAppBar(title: 'Challenges', showBackButton: false),
@@ -508,6 +501,52 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
     );
   }
 
+  // Map difficulty to icon and color
+  Map<String, dynamic> _getDifficultyConfig(String difficulty) {
+    // Consistent dark gray/slate background for all icons
+    const Color iconBackgroundColor = Color(0xFF1E3A5A);
+    // Consistent dark navy badge color for all difficulty levels
+    const Color badgeColor = Color(0xFF1E3A5A);
+
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+      case 'beginner':
+        return {
+          'icon': 'ac_unit',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'BEGINNER'
+        };
+      case 'medium':
+      case 'intermediate':
+        return {
+          'icon': 'local_fire_department',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'INTERMEDIATE'
+        };
+      case 'hard':
+      case 'advanced':
+        return {
+          'icon': 'emoji_events',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'ADVANCED'
+        };
+      default:
+        return {
+          'icon': 'whatshot',
+          'iconColor': Colors.white,
+          'backgroundColor': iconBackgroundColor,
+          'badgeColor': badgeColor,
+          'label': 'BEGINNER'
+        };
+    }
+  }
+
   void _showChallengeDetails([Map<String, dynamic>? challenge]) {
     final selectedChallenge = challenge ?? _activeChallenge;
 
@@ -536,6 +575,8 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final selectedChallenge = challenge ?? _activeChallenge!;
+    final difficulty = selectedChallenge['difficulty'] as String? ?? 'beginner';
+    final difficultyConfig = _getDifficultyConfig(difficulty);
 
     return Container(
       height: 80.h,
@@ -556,19 +597,12 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             ),
           ),
 
-          // Header
+          // Header with close button
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 4.w),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Expanded(
-                  child: Text(
-                    selectedChallenge['title'] as String,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: CustomIconWidget(
@@ -588,22 +622,64 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Challenge image if available
-                  if (selectedChallenge['image'] != null) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CustomImageWidget(
-                        imageUrl: selectedChallenge['image'] as String,
-                        width: double.infinity,
-                        height: 25.h,
-                        fit: BoxFit.cover,
-                        semanticLabel:
-                            selectedChallenge['semanticLabel'] as String? ??
-                                'Challenge image',
+                  // Icon badge and difficulty badge row
+                  Row(
+                    children: [
+                      // Colored circular icon badge
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: difficultyConfig['backgroundColor'] as Color,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: CustomIconWidget(
+                            iconName: difficultyConfig['icon'] as String,
+                            size: 28,
+                            color: difficultyConfig['iconColor'] as Color,
+                          ),
+                        ),
                       ),
+                      const Spacer(),
+                      // Difficulty badge
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 3.w, vertical: 0.8.h),
+                        decoration: BoxDecoration(
+                          color: (difficultyConfig['badgeColor'] as Color)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: (difficultyConfig['badgeColor'] as Color)
+                                .withValues(alpha: 0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          difficultyConfig['label'] as String,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: difficultyConfig['badgeColor'] as Color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 10.sp,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: 3.h),
+
+                  // Challenge Title
+                  Text(
+                    selectedChallenge['title'] as String,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                    SizedBox(height: 3.h),
-                  ],
+                  ),
+
+                  SizedBox(height: 2.h),
 
                   // Description
                   Text(
@@ -634,20 +710,6 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                   _buildRuleItem('Water temperature below 60°F (15°C)'),
                   _buildRuleItem('Log sessions within 24 hours'),
 
-                  SizedBox(height: 3.h),
-
-                  // Rewards
-                  Text(
-                    'Rewards',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  SizedBox(height: 1.h),
-                  _buildRewardItem('Arctic Warrior Badge', 'emoji_events'),
-                  _buildRewardItem('500 XP Points', 'stars'),
-                  _buildRewardItem('Exclusive Community Access', 'group'),
-
                   SizedBox(height: 4.h),
                 ],
               ),
@@ -662,7 +724,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _showJoinConfirmation(selectedChallenge);
+                  _joinChallenge(selectedChallenge);
                 },
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(vertical: 2.h),
@@ -702,85 +764,6 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRewardItem(String reward, String iconName) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: 1.h),
-      child: Row(
-        children: [
-          CustomIconWidget(
-            iconName: iconName,
-            size: 16,
-            color: AppTheme.accentLight,
-          ),
-          SizedBox(width: 2.w),
-          Text(
-            reward,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showJoinConfirmation(Map<String, dynamic> challenge) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Join Challenge?',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'You\'re about to join "${challenge['title']}"',
-              style: theme.textTheme.bodyMedium,
-            ),
-            SizedBox(height: 2.h),
-            Text(
-              'By joining, you commit to:',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            Text(
-              '• Complete daily sessions as required\n• Follow all challenge rules\n• Maintain respectful community interaction',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _joinChallenge(challenge);
-            },
-            child: const Text('Join Challenge'),
           ),
         ],
       ),

@@ -267,7 +267,7 @@ class ChallengeService {
             'avatarSemanticLabel':
                 'Profile picture of ${userProfile['full_name'] ?? 'user'}',
             'isCurrentUser': userProfile['id'] == _client.auth.currentUser?.id,
-            'isFriend': false, // TODO: Implement friends system
+            'isFriend': false,
             'isCompleted': item['is_completed'] == true,
             'completedAt': item['completed_at'],
           });
@@ -301,7 +301,7 @@ class ChallengeService {
           'avatarSemanticLabel':
               'Profile picture of ${item['full_name'] ?? 'user'}',
           'isCurrentUser': item['id'] == _client.auth.currentUser?.id,
-          'isFriend': false, // TODO: Implement friends system
+          'isFriend': false,
           'totalSessions': item['total_sessions'] ?? 0,
         });
       }

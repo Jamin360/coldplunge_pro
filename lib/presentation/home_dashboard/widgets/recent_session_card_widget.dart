@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
@@ -8,7 +9,6 @@ class RecentSessionCardWidget extends StatelessWidget {
   final Map<String, dynamic> session;
   final VoidCallback? onView;
   final VoidCallback? onShare;
-  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   const RecentSessionCardWidget({
@@ -16,7 +16,6 @@ class RecentSessionCardWidget extends StatelessWidget {
     required this.session,
     this.onView,
     this.onShare,
-    this.onEdit,
     this.onDelete,
   });
 
@@ -31,11 +30,10 @@ class RecentSessionCardWidget extends StatelessWidget {
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
-            onPressed: (context) => onShare?.call(),
-            backgroundColor: colorScheme.secondary,
+            onPressed: (context) => _shareSession(),
+            backgroundColor: AppTheme.warningLight,
             foregroundColor: Colors.white,
             icon: Icons.share,
-            label: 'Share',
             borderRadius: BorderRadius.circular(12),
           ),
         ],
@@ -44,18 +42,10 @@ class RecentSessionCardWidget extends StatelessWidget {
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
-            onPressed: (context) => onEdit?.call(),
-            backgroundColor: AppTheme.warningLight,
-            foregroundColor: Colors.white,
-            icon: Icons.edit,
-            label: 'Edit',
-          ),
-          SlidableAction(
             onPressed: (context) => onDelete?.call(),
             backgroundColor: AppTheme.errorLight,
             foregroundColor: Colors.white,
             icon: Icons.delete,
-            label: 'Delete',
             borderRadius: BorderRadius.circular(12),
           ),
         ],
@@ -297,6 +287,24 @@ class RecentSessionCardWidget extends StatelessWidget {
     }
   }
 
+  void _shareSession() {
+    final location = session['location'] as String;
+    final duration = session['duration'] as int;
+    final temperature = session['temperature'] as int;
+    final postMood = session['post_mood'] as String?;
+    final notes = session['notes'] as String?;
+
+    final shareText = '🧊 Cold Plunge Complete!\n\n'
+        '📍 Location: $location\n'
+        '⏱️ Duration: ${duration}s\n'
+        '🌡️ Temperature: ${temperature}°F\n'
+        '💭 Mood: ${postMood ?? 'Not recorded'}\n'
+        '${notes != null && notes.isNotEmpty ? '📝 Notes: $notes\n\n' : '\n'}'
+        'Tracked with ColdPlunge Pro 💪';
+
+    Share.share(shareText);
+  }
+
   void _showContextMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -337,25 +345,13 @@ class RecentSessionCardWidget extends StatelessWidget {
             ListTile(
               leading: CustomIconWidget(
                 iconName: 'share',
-                color: Theme.of(context).colorScheme.secondary,
+                color: AppTheme.warningLight,
                 size: 24,
               ),
               title: const Text('Share Session'),
               onTap: () {
                 Navigator.pop(context);
-                onShare?.call();
-              },
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'edit',
-                color: AppTheme.warningLight,
-                size: 24,
-              ),
-              title: const Text('Edit Session'),
-              onTap: () {
-                Navigator.pop(context);
-                onEdit?.call();
+                _shareSession();
               },
             ),
             ListTile(

@@ -7,7 +7,6 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/session_service.dart';
 import './widgets/audio_controls_widget.dart';
-import './widgets/breathing_exercise_widget.dart';
 import './widgets/session_completion_widget.dart';
 import './widgets/session_setup_widget.dart';
 import './widgets/timer_controls_widget.dart';
@@ -25,7 +24,6 @@ class _PlungeTimerState extends State<PlungeTimer>
   // Timer state
   Timer? _timer;
   Duration _sessionDuration = Duration.zero;
-  Duration _targetDuration = const Duration(minutes: 3);
   bool _isRunning = false;
   bool _isPaused = false;
   bool _isCountingDown = false;
@@ -42,11 +40,6 @@ class _PlungeTimerState extends State<PlungeTimer>
   // UI state
   bool _showSetup = false;
   bool _showCompletion = false;
-  bool _showBreathing = false;
-  bool _isBreathingActive = false;
-  bool _isSaving = false;
-  bool _isSavingSession = false;
-  bool _isSessionComplete = false;
   bool _showCompletionWidget = false;
   Duration _completedDuration = Duration.zero;
 
@@ -135,6 +128,7 @@ class _PlungeTimerState extends State<PlungeTimer>
       _isRunning = true;
       _isPaused = false;
       _sessionDuration = Duration.zero;
+      _isAudioPlaying = true; // Auto-start soundscape playback
     });
 
     _backgroundController.forward();
@@ -220,7 +214,6 @@ class _PlungeTimerState extends State<PlungeTimer>
     setState(() {
       _postMood = mood;
       _sessionNotes = notes;
-      _isSaving = false; // Don't show loading - use optimistic pattern
     });
 
     // Perform background save without blocking UI
@@ -336,15 +329,11 @@ class _PlungeTimerState extends State<PlungeTimer>
           .timeout(saveTimeout);
 
       if (mounted) {
-        // Single setState for success state
-        setState(() => _isSaving = false);
-
         _showSuccessMessage();
         _resetSession();
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _isSaving = false);
         _showErrorMessage(error);
       }
     }
@@ -406,31 +395,6 @@ class _PlungeTimerState extends State<PlungeTimer>
     );
   }
 
-  void _toggleBreathing() {
-    setState(() {
-      _showBreathing = !_showBreathing;
-      if (_showBreathing) {
-        _isBreathingActive = true;
-        _breathingTechnique =
-            'Wim Hof Method'; // Set breathing technique when activated
-      } else {
-        _breathingTechnique = null;
-      }
-    });
-  }
-
-  void _toggleBreathingActive() {
-    setState(() => _isBreathingActive = !_isBreathingActive);
-  }
-
-  void _closeBreathing() {
-    setState(() {
-      _showBreathing = false;
-      _isBreathingActive = false;
-      _breathingTechnique = null;
-    });
-  }
-
   void _toggleAudio() {
     setState(() => _isAudioPlaying = !_isAudioPlaying);
     HapticFeedback.lightImpact();
@@ -442,42 +406,6 @@ class _PlungeTimerState extends State<PlungeTimer>
 
   void _changeVolume(double volume) {
     setState(() => _audioVolume = volume);
-  }
-
-  Future<void> _saveSession() async {
-    setState(() => _isSavingSession = true);
-
-    try {
-      await SessionService.instance.saveSession(
-        duration: _completedDuration.inSeconds,
-        temperature: _temperature,
-        moodBefore: _getMoodString(_preMood),
-        moodAfter: _getMoodString(_postMood),
-        notes: _sessionNotes,
-        location: _location,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session saved successfully!')),
-        );
-        setState(() {
-          _isSessionComplete = false;
-          _showCompletionWidget = false;
-          _completedDuration = Duration.zero;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving session: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSavingSession = false);
-      }
-    }
   }
 
   @override
@@ -494,180 +422,150 @@ class _PlungeTimerState extends State<PlungeTimer>
             children: [
               // Main content
               SafeArea(
-                child: Column(
-                  children: [
-                    // Header
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 4.w,
-                        vertical: 2.h,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              HapticFeedback.lightImpact();
-                              Navigator.pushNamedAndRemoveUntil(
-                                context,
-                                AppRoutes.homeDashboard,
-                                (route) => false,
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surface.withValues(
-                                  alpha: 0.9,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colorScheme.shadow.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: CustomIconWidget(
-                                iconName: 'arrow_back_ios',
-                                color: colorScheme.onSurface,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            'Cold Plunge Timer',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: _toggleBreathing,
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: _showBreathing
-                                    ? colorScheme.primary.withValues(
-                                        alpha: 0.1,
-                                      )
-                                    : colorScheme.surface.withValues(
-                                        alpha: 0.9,
-                                      ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: colorScheme.shadow.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: CustomIconWidget(
-                                iconName: 'air',
-                                color: _showBreathing
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurface,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Countdown overlay
-                    if (_isCountingDown) ...[
-                      Expanded(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Get Ready!',
-                                style: theme.textTheme.headlineMedium?.copyWith(
-                                  color: colorScheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Container(
-                                width: 30.w,
-                                height: 30.w,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 4.w,
+                          vertical: 2.h,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.pushNamedAndRemoveUntil(
+                                  context,
+                                  AppRoutes.homeDashboard,
+                                  (route) => false,
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: colorScheme.primary.withValues(
-                                    alpha: 0.1,
+                                  color: colorScheme.surface.withValues(
+                                    alpha: 0.9,
                                   ),
-                                  border: Border.all(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: colorScheme.shadow.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: CustomIconWidget(
+                                  iconName: 'arrow_back_ios',
+                                  color: colorScheme.onSurface,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'Cold Plunge Timer',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: colorScheme.onSurface,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Countdown overlay
+                      if (_isCountingDown) ...[
+                        Container(
+                          constraints: BoxConstraints(
+                            minHeight: MediaQuery.of(context).size.height * 0.6,
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Get Ready!',
+                                  style:
+                                      theme.textTheme.headlineMedium?.copyWith(
                                     color: colorScheme.primary,
-                                    width: 3,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    '$_countdownValue',
-                                    style:
-                                        theme.textTheme.displayLarge?.copyWith(
+                                SizedBox(height: 4.h),
+                                Container(
+                                  width: 30.w,
+                                  height: 30.w,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    border: Border.all(
                                       color: colorScheme.primary,
-                                      fontWeight: FontWeight.w700,
+                                      width: 3,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$_countdownValue',
+                                      style: theme.textTheme.displayLarge
+                                          ?.copyWith(
+                                        color: colorScheme.primary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ] else ...[
-                      // Timer display
-                      Expanded(
-                        flex: 3,
-                        child: Center(
-                          child: TimerDisplayWidget(
-                            duration: _sessionDuration,
-                            isRunning: _isRunning,
-                            isPaused: _isPaused,
-                            onTap: _isRunning ? null : _showSessionSetup,
+                      ] else ...[
+                        // Timer display
+                        Container(
+                          constraints: BoxConstraints(
+                            minHeight: MediaQuery.of(context).size.height * 0.4,
+                          ),
+                          child: Center(
+                            child: TimerDisplayWidget(
+                              duration: _sessionDuration,
+                              isRunning: _isRunning,
+                              isPaused: _isPaused,
+                              onTap: _isRunning ? null : _showSessionSetup,
+                            ),
                           ),
                         ),
-                      ),
 
-                      // Breathing exercise
-                      if (_showBreathing)
-                        BreathingExerciseWidget(
-                          isActive: _isBreathingActive,
-                          onToggle: _toggleBreathingActive,
-                          onClose: _closeBreathing,
+                        // Audio controls
+                        AudioControlsWidget(
+                          isPlaying: _isAudioPlaying,
+                          currentTrack: _currentTrack,
+                          volume: _audioVolume,
+                          onPlayPause: _toggleAudio,
+                          onTrackChange: _changeTrack,
+                          onVolumeChange: _changeVolume,
                         ),
 
-                      // Audio controls
-                      AudioControlsWidget(
-                        isPlaying: _isAudioPlaying,
-                        currentTrack: _currentTrack,
-                        volume: _audioVolume,
-                        onPlayPause: _toggleAudio,
-                        onTrackChange: _changeTrack,
-                        onVolumeChange: _changeVolume,
-                      ),
-
-                      // Timer controls
-                      TimerControlsWidget(
-                        isRunning: _isRunning,
-                        isPaused: _isPaused,
-                        onStart: _showSessionSetup,
-                        onPause: _pauseSession,
-                        onResume: _resumeSession,
-                        onStop: _stopSession,
-                        onReset: _resetSession,
-                      ),
+                        // Timer controls
+                        TimerControlsWidget(
+                          isRunning: _isRunning,
+                          isPaused: _isPaused,
+                          onStart: _showSessionSetup,
+                          onPause: _pauseSession,
+                          onResume: _resumeSession,
+                          onStop: _stopSession,
+                          onReset: _resetSession,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
 
@@ -717,8 +615,6 @@ class _PlungeTimerState extends State<PlungeTimer>
                       duration: _completedDuration.inSeconds,
                       temperature: _temperature,
                       onSaveSession: (int mood, String notes) async {
-                        setState(() => _isSavingSession = true);
-
                         try {
                           await SessionService.instance.saveSession(
                             duration: _completedDuration.inSeconds,
@@ -735,7 +631,6 @@ class _PlungeTimerState extends State<PlungeTimer>
                                   content: Text('Session saved successfully!')),
                             );
                             setState(() {
-                              _isSessionComplete = false;
                               _showCompletionWidget = false;
                               _completedDuration = Duration.zero;
                             });
@@ -747,15 +642,10 @@ class _PlungeTimerState extends State<PlungeTimer>
                                   content: Text('Error saving session: $e')),
                             );
                           }
-                        } finally {
-                          if (mounted) {
-                            setState(() => _isSavingSession = false);
-                          }
                         }
                       },
                       onDiscardSession: () {
                         setState(() {
-                          _isSessionComplete = false;
                           _showCompletionWidget = false;
                           _completedDuration = Duration.zero;
                         });

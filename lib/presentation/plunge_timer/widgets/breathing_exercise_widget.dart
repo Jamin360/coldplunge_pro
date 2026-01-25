@@ -101,7 +101,7 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
   }
 
   void _runBreathingPhase() {
-    if (!widget.isActive) return;
+    if (!widget.isActive || !mounted) return;
 
     setState(() {
       _currentInstruction = _instructions[_currentPhase];
@@ -123,7 +123,7 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
     }
 
     Future.delayed(Duration(seconds: _phaseDurations[_currentPhase]), () {
-      if (!widget.isActive) return;
+      if (!widget.isActive || !mounted) return;
 
       _currentPhase = (_currentPhase + 1) % 4;
       if (_currentPhase == 0) {
@@ -151,8 +151,11 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
       opacity: _fadeAnimation,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(6.w),
-        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.65,
+        ),
+        padding: EdgeInsets.all(3.w),
+        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 0.5.h),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
@@ -164,144 +167,148 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
             ),
           ],
         ),
-        child: Column(
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Breathing Exercise',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    widget.onClose?.call();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.onSurface.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: CustomIconWidget(
-                      iconName: 'close',
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Breathing Exercise',
+                    style: theme.textTheme.titleMedium?.copyWith(
                       color: colorScheme.onSurface,
-                      size: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 3.h),
-
-            // Breathing visualization
-            AnimatedBuilder(
-              animation: _breatheAnimation,
-              builder: (context, child) {
-                return Container(
-                  width: 40.w,
-                  height: 40.w,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Outer ring
-                      Container(
-                        width: 40.w * _breatheAnimation.value,
-                        height: 40.w * _breatheAnimation.value,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colorScheme.primary.withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                        ),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      widget.onClose?.call();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.onSurface.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      // Inner circle
-                      Container(
-                        width: 30.w * _breatheAnimation.value,
-                        height: 30.w * _breatheAnimation.value,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              colorScheme.primary.withValues(alpha: 0.2),
-                              colorScheme.primary.withValues(alpha: 0.1),
-                            ],
-                          ),
-                        ),
+                      child: CustomIconWidget(
+                        iconName: 'close',
+                        color: colorScheme.onSurface,
+                        size: 16,
                       ),
-                      // Center dot
-                      Container(
-                        width: 4.w,
-                        height: 4.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                );
-              },
-            ),
-            SizedBox(height: 3.h),
-
-            // Instruction text
-            Text(
-              _currentInstruction,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w500,
+                ],
               ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 1.h),
+              SizedBox(height: 1.5.h),
 
-            // Cycle counter
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Cycle ${_currentCycle + 1}',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            SizedBox(height: 3.h),
-
-            // Control button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  widget.onToggle?.call();
+              // Breathing visualization
+              AnimatedBuilder(
+                animation: _breatheAnimation,
+                builder: (context, child) {
+                  return Container(
+                    width: 35.w,
+                    height: 35.w,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Outer ring
+                        Container(
+                          width: 35.w * _breatheAnimation.value,
+                          height: 35.w * _breatheAnimation.value,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colorScheme.primary.withValues(alpha: 0.3),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        // Inner circle
+                        Container(
+                          width: 25.w * _breatheAnimation.value,
+                          height: 25.w * _breatheAnimation.value,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                colorScheme.primary.withValues(alpha: 0.2),
+                                colorScheme.primary.withValues(alpha: 0.1),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Center dot
+                        Container(
+                          width: 4.w,
+                          height: 4.w,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      widget.isActive ? colorScheme.error : colorScheme.primary,
-                  padding: EdgeInsets.symmetric(vertical: 2.h),
+              ),
+              SizedBox(height: 1.5.h),
+
+              // Instruction text
+              Text(
+                _currentInstruction,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 1.h),
+
+              // Cycle counter
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  widget.isActive ? 'Stop Exercise' : 'Start Exercise',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onPrimary,
+                  'Cycle ${_currentCycle + 1}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: 1.5.h),
+
+              // Control button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    widget.onToggle?.call();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.isActive
+                        ? colorScheme.error
+                        : colorScheme.primary,
+                    padding: EdgeInsets.symmetric(vertical: 1.5.h),
+                  ),
+                  child: Text(
+                    widget.isActive ? 'Stop Exercise' : 'Start Exercise',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

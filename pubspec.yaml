@@ -38,6 +38,7 @@ dependencies:
   share_plus: ^7.2.1
 
   supabase_flutter: any
+  audioplayers: ^6.1.0
 dev_dependencies:
   flutter_test:    # CRITICAL: Required for Flutter project testing - DO NOT REMOVE
     sdk: flutter   # CRITICAL: Required for Flutter project testing - DO NOT REMOVE

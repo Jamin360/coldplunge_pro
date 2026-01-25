@@ -99,27 +99,6 @@ class _HomeDashboardState extends State<HomeDashboard>
     _showSessionDetails(session);
   }
 
-  void _shareSession(Map<String, dynamic> session) {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Share functionality coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _editSession(Map<String, dynamic> session) {
-    HapticFeedback.lightImpact();
-    // TODO: Navigate to edit session screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Edit session functionality coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   Future<void> _deleteSession(Map<String, dynamic> session) async {
     HapticFeedback.mediumImpact();
     _showDeleteConfirmation(session);
@@ -598,8 +577,6 @@ class _HomeDashboardState extends State<HomeDashboard>
                                 return RecentSessionCardWidget(
                                   session: session,
                                   onView: () => _viewSessionDetails(session),
-                                  onShare: () => _shareSession(session),
-                                  onEdit: () => _editSession(session),
                                   onDelete: () => _deleteSession(session),
                                 );
                               }).toList(),

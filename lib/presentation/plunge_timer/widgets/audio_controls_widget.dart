@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
@@ -34,36 +35,36 @@ class _AudioControlsWidgetState extends State<AudioControlsWidget>
 
   bool _isExpanded = false;
 
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   final List<Map<String, dynamic>> _soundscapes = [
     {
       'name': 'Ocean Waves',
       'icon': 'waves',
       'description': 'Calming ocean sounds',
       'duration': '∞',
+      'filename': 'ocean_waves.mp3',
     },
     {
       'name': 'Rain Sounds',
       'icon': 'grain',
       'description': 'Gentle rainfall',
       'duration': '∞',
-    },
-    {
-      'name': 'Guided Breathing',
-      'icon': 'air',
-      'description': '4-7-8 breathing pattern',
-      'duration': '10:00',
+      'filename': 'rain_sounds.mp3',
     },
     {
       'name': 'Forest Ambience',
       'icon': 'park',
       'description': 'Birds and nature sounds',
       'duration': '∞',
+      'filename': 'forest_ambience.mp3',
     },
     {
       'name': 'White Noise',
       'icon': 'graphic_eq',
       'description': 'Pure white noise',
       'duration': '∞',
+      'filename': 'white_noise.mp3',
     },
   ];
 
@@ -78,12 +79,73 @@ class _AudioControlsWidgetState extends State<AudioControlsWidget>
       parent: _expandController,
       curve: Curves.easeInOut,
     );
+
+    // Configure audio player for looping
+    _audioPlayer.setReleaseMode(ReleaseMode.loop);
+    _audioPlayer.setVolume(widget.volume);
+
+    // If already playing when widget is created, start playback
+    if (widget.isPlaying) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _playCurrentTrack();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(AudioControlsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Update volume when it changes
+    if (oldWidget.volume != widget.volume) {
+      _audioPlayer.setVolume(widget.volume);
+    }
+
+    // Handle play/pause changes
+    if (oldWidget.isPlaying != widget.isPlaying) {
+      if (widget.isPlaying) {
+        _playCurrentTrack();
+      } else {
+        _audioPlayer.pause();
+      }
+    }
+
+    // Handle track changes
+    if (oldWidget.currentTrack != widget.currentTrack && widget.isPlaying) {
+      _playCurrentTrack();
+    }
   }
 
   @override
   void dispose() {
+    _audioPlayer.dispose();
     _expandController.dispose();
     super.dispose();
+  }
+
+  String _getAudioUrl(String trackName) {
+    final soundscape = _soundscapes.firstWhere(
+      (s) => s['name'] == trackName,
+      orElse: () => _soundscapes[0],
+    );
+    final filename = soundscape['filename'] as String;
+    return 'https://achwyehtsjakhhazmsem.supabase.co/storage/v1/object/public/Soundscapes/$filename';
+  }
+
+  Future<void> _playCurrentTrack() async {
+    try {
+      final url = _getAudioUrl(widget.currentTrack);
+      print('🎵 Loading soundscape: ${widget.currentTrack}');
+      print('🎵 URL: $url');
+
+      await _audioPlayer.stop();
+      await _audioPlayer.play(UrlSource(url));
+
+      print('✅ Audio playback started successfully');
+    } catch (e, stackTrace) {
+      print('❌ Error playing audio: $e');
+      print('Stack trace: $stackTrace');
+    }
   }
 
   void _toggleExpanded() {
@@ -222,148 +284,155 @@ class _AudioControlsWidgetState extends State<AudioControlsWidget>
           SizeTransition(
             sizeFactor: _expandAnimation,
             child: Container(
-              padding: EdgeInsets.fromLTRB(4.w, 0, 4.w, 4.w),
-              child: Column(
-                children: [
-                  Divider(
-                    color: colorScheme.outline.withValues(alpha: 0.2),
-                    height: 1,
-                  ),
-                  SizedBox(height: 3.h),
+              padding: EdgeInsets.fromLTRB(4.w, 0, 4.w, 2.w),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Divider(
+                      color: colorScheme.outline.withValues(alpha: 0.2),
+                      height: 1,
+                    ),
+                    SizedBox(height: 2.h),
 
-                  // Volume slider
-                  Row(
-                    children: [
-                      CustomIconWidget(
-                        iconName: 'volume_down',
-                        color: colorScheme.onSurfaceVariant,
-                        size: 20,
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: widget.volume,
-                          onChanged: (value) {
-                            widget.onVolumeChange?.call(value);
-                            HapticFeedback.selectionClick();
-                          },
-                          activeColor: colorScheme.primary,
-                          inactiveColor:
-                              colorScheme.outline.withValues(alpha: 0.3),
+                    // Volume slider
+                    Row(
+                      children: [
+                        CustomIconWidget(
+                          iconName: 'volume_down',
+                          color: colorScheme.onSurfaceVariant,
+                          size: 20,
                         ),
-                      ),
-                      CustomIconWidget(
-                        iconName: 'volume_up',
-                        color: colorScheme.onSurfaceVariant,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 2.h),
-
-                  // Soundscape selection
-                  Text(
-                    'Choose Soundscape',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Slider(
+                            value: widget.volume,
+                            onChanged: (value) {
+                              widget.onVolumeChange?.call(value);
+                              HapticFeedback.selectionClick();
+                            },
+                            activeColor: colorScheme.primary,
+                            inactiveColor:
+                                colorScheme.outline.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        CustomIconWidget(
+                          iconName: 'volume_up',
+                          color: colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 2.h),
+                    SizedBox(height: 1.5.h),
 
-                  // Soundscape grid
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 3.w,
-                      mainAxisSpacing: 2.h,
-                      childAspectRatio: 2.5,
+                    // Soundscape selection
+                    Text(
+                      'Choose Soundscape',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    itemCount: _soundscapes.length,
-                    itemBuilder: (context, index) {
-                      final soundscape = _soundscapes[index];
-                      final isSelected =
-                          widget.currentTrack == soundscape['name'];
+                    SizedBox(height: 1.5.h),
 
-                      return GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          widget.onTrackChange?.call(soundscape['name']);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: EdgeInsets.all(3.w),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? colorScheme.primary.withValues(alpha: 0.1)
-                                : colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
+                    // Soundscape grid
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 3.w,
+                        mainAxisSpacing: 2.h,
+                        childAspectRatio: 2.5,
+                      ),
+                      itemCount: _soundscapes.length,
+                      itemBuilder: (context, index) {
+                        final soundscape = _soundscapes[index];
+                        final isSelected =
+                            widget.currentTrack == soundscape['name'];
+
+                        return GestureDetector(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            widget.onTrackChange?.call(soundscape['name']);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: EdgeInsets.all(3.w),
+                            decoration: BoxDecoration(
                               color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.outline.withValues(alpha: 0.3),
-                              width: isSelected ? 2 : 1,
+                                  ? colorScheme.primary.withValues(alpha: 0.1)
+                                  : colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? colorScheme.primary
+                                    : colorScheme.outline
+                                        .withValues(alpha: 0.3),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8.w,
+                                  height: 8.w,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? colorScheme.primary
+                                            .withValues(alpha: 0.2)
+                                        : colorScheme.onSurface
+                                            .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: CustomIconWidget(
+                                    iconName: soundscape['icon'],
+                                    color: isSelected
+                                        ? colorScheme.primary
+                                        : colorScheme.onSurfaceVariant,
+                                    size: 16,
+                                  ),
+                                ),
+                                SizedBox(width: 2.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        soundscape['name'],
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                          color: isSelected
+                                              ? colorScheme.primary
+                                              : colorScheme.onSurface,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        soundscape['duration'],
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 8.w,
-                                height: 8.w,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? colorScheme.primary
-                                          .withValues(alpha: 0.2)
-                                      : colorScheme.onSurface
-                                          .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: CustomIconWidget(
-                                  iconName: soundscape['icon'],
-                                  color: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.onSurfaceVariant,
-                                  size: 16,
-                                ),
-                              ),
-                              SizedBox(width: 2.w),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      soundscape['name'],
-                                      style:
-                                          theme.textTheme.labelMedium?.copyWith(
-                                        color: isSelected
-                                            ? colorScheme.primary
-                                            : colorScheme.onSurface,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      soundscape['duration'],
-                                      style:
-                                          theme.textTheme.labelSmall?.copyWith(
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

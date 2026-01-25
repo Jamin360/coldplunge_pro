@@ -166,13 +166,12 @@ class AnalyticsService {
         final dateLabel = daysAgo == 0
             ? 'Today'
             : daysAgo == 1
-            ? 'Yesterday'
-            : '${daysAgo}d ago';
+                ? 'Yesterday'
+                : '${daysAgo}d ago';
 
         // Convert temperature to double for chart compatibility
-        final tempValue = (temp is int)
-            ? temp.toDouble()
-            : (temp as num).toDouble();
+        final tempValue =
+            (temp is int) ? temp.toDouble() : (temp as num).toDouble();
 
         tempData.add({
           'session': sessionLabel,
@@ -268,21 +267,21 @@ class AnalyticsService {
       final avgPreMoodScore = moodData.isEmpty
           ? 0.0
           : moodData
-                    .map((e) => e['preMoodScore'] as int)
-                    .reduce((a, b) => a + b) /
-                moodData.length;
+                  .map((e) => e['preMoodScore'] as int)
+                  .reduce((a, b) => a + b) /
+              moodData.length;
       final avgPostMoodScore = moodData.isEmpty
           ? 0.0
           : moodData
-                    .map((e) => e['postMoodScore'] as int)
-                    .reduce((a, b) => a + b) /
-                moodData.length;
+                  .map((e) => e['postMoodScore'] as int)
+                  .reduce((a, b) => a + b) /
+              moodData.length;
       final avgImprovement = moodData.isEmpty
           ? 0.0
           : moodData
-                    .map((e) => e['improvement'] as int)
-                    .reduce((a, b) => a + b) /
-                moodData.length;
+                  .map((e) => e['improvement'] as int)
+                  .reduce((a, b) => a + b) /
+              moodData.length;
 
       // Find most common moods with null safety
       final mostCommonPreMood = _findMostCommonMood(
@@ -295,12 +294,10 @@ class AnalyticsService {
       );
 
       // Calculate mood consistency (how often moods improve)
-      final improvementCount = moodData
-          .where((m) => (m['improvement'] as int) > 0)
-          .length;
-      final consistencyRate = moodData.isEmpty
-          ? 0.0
-          : improvementCount / moodData.length;
+      final improvementCount =
+          moodData.where((m) => (m['improvement'] as int) > 0).length;
+      final consistencyRate =
+          moodData.isEmpty ? 0.0 : improvementCount / moodData.length;
 
       // Generate weekly trend data for charts
       final weeklyTrends = _generateWeeklyMoodTrends(moodData);
@@ -411,13 +408,11 @@ class AnalyticsService {
 
     weeklyGroups.entries.forEach((entry) {
       final weekData = entry.value;
-      final avgPre =
-          weekData
+      final avgPre = weekData
               .map((m) => m['preMoodScore'] as int)
               .reduce((a, b) => a + b) /
           weekData.length;
-      final avgPost =
-          weekData
+      final avgPost = weekData
               .map((m) => m['postMoodScore'] as int)
               .reduce((a, b) => a + b) /
           weekData.length;
@@ -482,9 +477,8 @@ class AnalyticsService {
     // Calculate average duration from actual session data
     double avgDuration = 0.0;
     if (sessions.isNotEmpty) {
-      final durations = sessions
-          .map<int>((session) => session['duration'] ?? 0)
-          .toList();
+      final durations =
+          sessions.map<int>((session) => session['duration'] ?? 0).toList();
       avgDuration = durations.reduce((a, b) => a + b) / durations.length;
     }
 
@@ -598,20 +592,6 @@ class AnalyticsService {
   String _getDayName(int weekday) {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[weekday - 1];
-  }
-
-  int _moodToNumber(String mood) {
-    const moodMap = {
-      'stressed': 2,
-      'tired': 3,
-      'anxious': 3,
-      'neutral': 5,
-      'energized': 8,
-      'focused': 7,
-      'calm': 8,
-      'euphoric': 10,
-    };
-    return moodMap[mood] ?? 5;
   }
 
   // Export data methods

@@ -311,7 +311,7 @@ class CommunityService {
           popularPosts.isNotEmpty ? popularPosts.first : null;
 
       return {
-        'total_posts': postsCount.count ?? 0,
+        'total_posts': postsCount.count,
         'total_likes_received': totalLikes,
         'most_popular_post': mostPopularPost?['content'] ?? 'N/A',
         'most_popular_likes': mostPopularPost?['likes_count'] ?? 0,

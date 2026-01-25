@@ -24,7 +24,7 @@ class WeeklyProgressChartWidget extends StatelessWidget {
   // Calculate optimal interval based on maxY
   double _calculateInterval() {
     final maxY = _calculateMaxY();
-    return ChartUtils.calculateOptimalInterval(0, maxY);
+    return ChartUtils.calculateDurationInterval(maxY);
   }
 
   // Helper method to format duration display for tooltips
@@ -124,6 +124,7 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 35,
                         getTitlesWidget: (double value, TitleMeta meta) {
                           if (value.toInt() < weeklyData.length) {
                             return Padding(
@@ -139,27 +140,33 @@ class WeeklyProgressChartWidget extends StatelessWidget {
                           }
                           return const SizedBox.shrink();
                         },
-                        reservedSize: 30,
                       ),
                     ),
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
+                        reservedSize: 50,
                         interval: _calculateInterval(),
                         getTitlesWidget: (double value, TitleMeta meta) {
-                          return Padding(
-                            padding: EdgeInsets.only(right: 1.w),
+                          return SideTitleWidget(
+                            axisSide: meta.axisSide,
+                            fitInside: const SideTitleFitInsideData(
+                              enabled: true,
+                              axisPosition: 0,
+                              parentAxisSize: 50,
+                              distanceFromEdge: 0,
+                            ),
                             child: Text(
                               ChartUtils.formatDurationLabel(value),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w400,
-                                fontSize: 10.sp,
+                                fontSize: 9.sp,
                               ),
+                              textAlign: TextAlign.right,
                             ),
                           );
                         },
-                        reservedSize: 32,
                       ),
                     ),
                   ),
