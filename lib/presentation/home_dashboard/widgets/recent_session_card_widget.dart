@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
@@ -23,36 +22,76 @@ class RecentSessionCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final location = session['location'] as String? ?? 'Unknown Location';
 
-    return Slidable(
-      key: ValueKey(session['id']),
-      startActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (context) => _shareSession(),
-            backgroundColor: AppTheme.warningLight,
-            foregroundColor: Colors.white,
-            icon: Icons.share,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ],
+    return Dismissible(
+      key: Key(session['id'] as String),
+      direction: DismissDirection.horizontal,
+      background: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+        decoration: BoxDecoration(
+          color: AppTheme.warningLight,
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: EdgeInsets.only(left: 4.w),
+        child: const CustomIconWidget(
+          iconName: 'share',
+          color: Colors.white,
+          size: 24,
+        ),
       ),
-      endActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (context) => onDelete?.call(),
-            backgroundColor: AppTheme.errorLight,
-            foregroundColor: Colors.white,
-            icon: Icons.delete,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ],
+      secondaryBackground: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
+        decoration: BoxDecoration(
+          color: AppTheme.errorLight,
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.only(right: 4.w),
+        child: const CustomIconWidget(
+          iconName: 'delete',
+          color: Colors.white,
+          size: 24,
+        ),
       ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          // Share action
+          _shareSession();
+          return false;
+        } else {
+          // Delete action
+          final shouldDelete = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Delete Session'),
+              content: Text('Delete session from $location?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.errorLight,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldDelete == true) {
+            onDelete?.call();
+          }
+
+          return false;
+        }
+      },
       child: GestureDetector(
         onTap: onView,
-        onLongPress: () => _showContextMenu(context),
         child: Container(
           margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
           padding: EdgeInsets.all(4.w),
@@ -303,73 +342,5 @@ class RecentSessionCardWidget extends StatelessWidget {
         'Tracked with ColdPlunge Pro 💪';
 
     Share.share(shareText);
-  }
-
-  void _showContextMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 12.w,
-              height: 0.5.h,
-              margin: EdgeInsets.symmetric(vertical: 2.h),
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.outline.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'visibility',
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
-              ),
-              title: const Text('View Details'),
-              onTap: () {
-                Navigator.pop(context);
-                onView?.call();
-              },
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'share',
-                color: AppTheme.warningLight,
-                size: 24,
-              ),
-              title: const Text('Share Session'),
-              onTap: () {
-                Navigator.pop(context);
-                _shareSession();
-              },
-            ),
-            ListTile(
-              leading: CustomIconWidget(
-                iconName: 'delete',
-                color: AppTheme.errorLight,
-                size: 24,
-              ),
-              title: const Text('Delete Session'),
-              onTap: () {
-                Navigator.pop(context);
-                onDelete?.call();
-              },
-            ),
-            SizedBox(height: 2.h),
-          ],
-        ),
-      ),
-    );
   }
 }

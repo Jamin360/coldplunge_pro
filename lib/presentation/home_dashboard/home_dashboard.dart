@@ -160,7 +160,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                     ),
                     _buildDetailRow(
                       'Temperature',
-                      '${session['temperature']}°C',
+                      '${session['temperature']}°F',
                     ),
                     if (session['rating'] != null)
                       _buildDetailRow(
@@ -493,9 +493,16 @@ class _HomeDashboardState extends State<HomeDashboard>
                           Expanded(
                             child: QuickStatsCardWidget(
                               title: 'Avg Duration',
-                              value: '${_userStats['avg_duration'] ?? '0.0'}s',
+                              value: _formatDuration(
+                                  (_userStats['avg_duration'] ?? 0.0) is String
+                                      ? double.parse(
+                                              _userStats['avg_duration'] ??
+                                                  '0.0')
+                                          .round()
+                                      : (_userStats['avg_duration'] ?? 0.0)
+                                          .round()),
                               subtitle:
-                                  'Personal best: ${_userStats['personal_best_duration'] ?? 0}s',
+                                  'Personal best: ${_formatDuration(_userStats['personal_best_duration'] ?? 0)}',
                               iconName: 'timer',
                               accentColor: colorScheme.secondary,
                             ),

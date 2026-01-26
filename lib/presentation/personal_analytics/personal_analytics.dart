@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
@@ -17,6 +18,8 @@ class PersonalAnalytics extends StatefulWidget {
 }
 
 class _PersonalAnalyticsState extends State<PersonalAnalytics> {
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      GlobalKey<RefreshIndicatorState>();
   String _selectedPeriod = 'Month';
   final AnalyticsService _analyticsService = AnalyticsService();
 
@@ -108,6 +111,11 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    HapticFeedback.lightImpact();
+    await _loadAnalyticsData();
   }
 
   List<Map<String, dynamic>> _buildKeyMetricsFromData(
@@ -320,572 +328,547 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
           SizedBox(width: 2.w),
         ],
       ),
-      body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: colorScheme.primary),
-                  SizedBox(height: 4.w),
-                  Text(
-                    'Loading analytics...',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 12.w,
-                        color: colorScheme.error,
-                      ),
-                      SizedBox(height: 4.w),
-                      Text(
-                        'Failed to load analytics',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: colorScheme.error,
-                        ),
-                      ),
-                      SizedBox(height: 2.w),
-                      Text(
-                        _errorMessage!,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 4.w),
-                      ElevatedButton(
-                        onPressed: _loadAnalyticsData,
-                        child: Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 3.w),
-
-                      // Time Period Selector - Styled like Challenges filter tabs
-                      // TimePeriodSelectorWidget(
-                      //   selectedPeriod: _selectedPeriod,
-                      //   onPeriodChanged: (period) {
-                      //     setState(() {
-                      //       _selectedPeriod = period;
-                      //     });
-                      //     _loadAnalyticsData();
-                      //   },
-                      //   periods: _periods,
-                      // ),
-
-                      // Key Metrics Cards - 2x2 Grid Layout
-                      SizedBox(height: 3.w),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4.w),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 3.w,
-                            mainAxisSpacing: 3.w,
-                            childAspectRatio: 1.1,
-                          ),
-                          itemCount: _keyMetrics.length,
-                          itemBuilder: (context, index) {
-                            final metric = _keyMetrics[index];
-                            return MetricsCardWidget(
-                              title: metric['title'] as String,
-                              value: metric['value'] as String,
-                              subtitle: metric['subtitle'] as String,
-                              icon: metric['icon'] as IconData,
-                              isHighlighted: metric['isHighlighted'] as bool,
-                            );
-                          },
-                        ),
-                      ),
-
-                      // Progress Goals
-                      if (_analyticsData['weeklyGoal'] != null) ...[
+      body: RefreshIndicator(
+        key: _refreshIndicatorKey,
+        onRefresh: _handleRefresh,
+        color: colorScheme.primary,
+        backgroundColor: colorScheme.surface,
+        child: _isLoading
+            ? _buildScrollableLoadingState(colorScheme, theme)
+            : _errorMessage != null
+                ? _buildScrollableErrorState(colorScheme, theme)
+                : SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         SizedBox(height: 3.w),
-                        ProgressGoalWidget(
-                          title: 'Weekly Goal Progress',
-                          currentValue: _analyticsData['weeklyGoal']
-                                      ['currentSessions']
-                                  ?.toString() ??
-                              '0',
-                          targetValue: _analyticsData['weeklyGoal']
-                                      ['targetSessions']
-                                  ?.toString() ??
-                              '0',
-                          progress: _analyticsData['weeklyGoal']
-                                          ['currentSessions'] !=
-                                      null &&
-                                  _analyticsData['weeklyGoal']
-                                          ['targetSessions'] !=
-                                      null
-                              ? (_analyticsData['weeklyGoal']
-                                          ['currentSessions'] /
-                                      _analyticsData['weeklyGoal']
-                                          ['targetSessions'])
-                                  .clamp(0.0, 1.0)
-                              : 0.0,
-                          motivationalMessage: _getMotivationalMessage(),
-                          icon: Icons.flag,
-                        ),
-                      ],
 
-                      // Session Frequency Chart
-                      SizedBox(height: 3.w),
-                      if (_sessionFrequencyData.isNotEmpty)
-                        ChartContainerWidget(
-                          title: 'Session Frequency',
-                          subtitle: _selectedPeriod == 'Week'
-                              ? 'Sessions per day this week'
-                              : 'Sessions per week',
-                          chart: Semantics(
-                            label: "Session Frequency Bar Chart",
-                            child: BarChart(
-                              BarChartData(
-                                alignment: BarChartAlignment.spaceAround,
-                                maxY: _getMaxSessionCount().toDouble(),
-                                barTouchData: BarTouchData(
-                                  enabled: true,
-                                  touchTooltipData: BarTouchTooltipData(
-                                    tooltipBgColor: colorScheme.surface,
-                                    tooltipBorder: BorderSide(
-                                      color: colorScheme.outline.withValues(
-                                        alpha: 0.2,
-                                      ),
-                                    ),
-                                    getTooltipItem:
-                                        (group, groupIndex, rod, rodIndex) {
-                                      return BarTooltipItem(
-                                        '${_sessionFrequencyData[group.x.toInt()]['sessions']} sessions',
-                                        TextStyle(
-                                          color: colorScheme.onSurface,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                                titlesData: FlTitlesData(
-                                  show: true,
-                                  rightTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  topTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 30,
-                                      getTitlesWidget:
-                                          (double value, TitleMeta meta) {
-                                        final index = value.toInt();
-                                        if (index >= 0 &&
-                                            index <
-                                                _sessionFrequencyData.length) {
-                                          final label =
-                                              _selectedPeriod == 'Week'
-                                                  ? _sessionFrequencyData[index]
-                                                      ['day'] as String
-                                                  : _sessionFrequencyData[index]
-                                                      ['week'] as String;
-                                          return Padding(
-                                            padding: EdgeInsets.only(top: 2.w),
-                                            child: Text(
-                                              label,
-                                              style: TextStyle(
-                                                color: colorScheme
-                                                    .onSurfaceVariant,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 10.sp,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                        return const Text('');
-                                      },
-                                    ),
-                                  ),
-                                  leftTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 45,
-                                      interval:
-                                          _calculateSessionFrequencyInterval(),
-                                      getTitlesWidget:
-                                          (double value, TitleMeta meta) {
-                                        return SideTitleWidget(
-                                          axisSide: meta.axisSide,
-                                          fitInside:
-                                              const SideTitleFitInsideData(
-                                            enabled: true,
-                                            axisPosition: 0,
-                                            parentAxisSize: 45,
-                                            distanceFromEdge: 0,
-                                          ),
-                                          child: Text(
-                                            ChartUtils.formatCountLabel(value),
-                                            style: TextStyle(
-                                              color:
-                                                  colorScheme.onSurfaceVariant,
-                                              fontWeight: FontWeight.w400,
-                                              fontSize: 9.sp,
-                                            ),
-                                            textAlign: TextAlign.right,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                borderData: FlBorderData(show: false),
-                                barGroups: _sessionFrequencyData
-                                    .asMap()
-                                    .entries
-                                    .map((entry) {
-                                  return BarChartGroupData(
-                                    x: entry.key,
-                                    barRods: [
-                                      BarChartRodData(
-                                        toY: (entry.value['sessions'] as num)
-                                            .toDouble(),
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            colorScheme.primary.withValues(
-                                              alpha: 0.8,
-                                            ),
-                                            colorScheme.primary,
-                                          ],
-                                          begin: Alignment.bottomCenter,
-                                          end: Alignment.topCenter,
-                                        ),
-                                        width: 8.w,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ],
-                                  );
-                                }).toList(),
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: false,
-                                  horizontalInterval:
-                                      _calculateSessionFrequencyInterval(),
-                                  getDrawingHorizontalLine: (value) {
-                                    return FlLine(
-                                      color: colorScheme.outline.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      strokeWidth: 1,
-                                    );
-                                  },
-                                ),
-                              ),
+                        // Time Period Selector - Styled like Challenges filter tabs
+                        // TimePeriodSelectorWidget(
+                        //   selectedPeriod: _selectedPeriod,
+                        //   onPeriodChanged: (period) {
+                        //     setState(() {
+                        //       _selectedPeriod = period;
+                        //     });
+                        //     _loadAnalyticsData();
+                        //   },
+                        //   periods: _periods,
+                        // ),
+
+                        // Key Metrics Cards - 2x2 Grid Layout
+                        SizedBox(height: 3.w),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4.w),
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 3.w,
+                              mainAxisSpacing: 3.w,
+                              childAspectRatio: 1.1,
                             ),
+                            itemCount: _keyMetrics.length,
+                            itemBuilder: (context, index) {
+                              final metric = _keyMetrics[index];
+                              return MetricsCardWidget(
+                                title: metric['title'] as String,
+                                value: metric['value'] as String,
+                                subtitle: metric['subtitle'] as String,
+                                icon: metric['icon'] as IconData,
+                                isHighlighted: metric['isHighlighted'] as bool,
+                              );
+                            },
                           ),
                         ),
 
-                      // Temperature Progress Chart
-                      SizedBox(height: 3.w),
-                      if (_temperatureProgressData.isNotEmpty)
-                        Builder(
-                          builder: (context) {
-                            // Check if we have actual temperature data
-                            final hasActualData =
-                                _temperatureProgressData.isNotEmpty;
+                        // Progress Goals
+                        if (_analyticsData['weeklyGoal'] != null) ...[
+                          SizedBox(height: 3.w),
+                          ProgressGoalWidget(
+                            title: 'Weekly Goal Progress',
+                            currentValue: _analyticsData['weeklyGoal']
+                                        ['currentSessions']
+                                    ?.toString() ??
+                                '0',
+                            targetValue: _analyticsData['weeklyGoal']
+                                        ['targetSessions']
+                                    ?.toString() ??
+                                '0',
+                            progress: _analyticsData['weeklyGoal']
+                                            ['currentSessions'] !=
+                                        null &&
+                                    _analyticsData['weeklyGoal']
+                                            ['targetSessions'] !=
+                                        null
+                                ? (_analyticsData['weeklyGoal']
+                                            ['currentSessions'] /
+                                        _analyticsData['weeklyGoal']
+                                            ['targetSessions'])
+                                    .clamp(0.0, 1.0)
+                                : 0.0,
+                            motivationalMessage: _getMotivationalMessage(),
+                            icon: Icons.flag,
+                          ),
+                        ],
 
-                            if (!hasActualData) {
-                              return Container(
-                                margin: EdgeInsets.all(4.w),
-                                padding: EdgeInsets.all(6.w),
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surface,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: colorScheme.shadow.withValues(
-                                        alpha: 0.05,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.ac_unit,
-                                          color: Colors.blue,
-                                          size: 6.w,
+                        // Session Frequency Chart
+                        SizedBox(height: 3.w),
+                        if (_sessionFrequencyData.isNotEmpty)
+                          ChartContainerWidget(
+                            title: 'Session Frequency',
+                            subtitle: _selectedPeriod == 'Week'
+                                ? 'Sessions per day this week'
+                                : 'Sessions per week',
+                            chart: Semantics(
+                              label: "Session Frequency Bar Chart",
+                              child: BarChart(
+                                BarChartData(
+                                  alignment: BarChartAlignment.spaceAround,
+                                  maxY: _getMaxSessionCount().toDouble(),
+                                  barTouchData: BarTouchData(
+                                    enabled: true,
+                                    touchTooltipData: BarTouchTooltipData(
+                                      tooltipBgColor: colorScheme.surface,
+                                      tooltipBorder: BorderSide(
+                                        color: colorScheme.outline.withValues(
+                                          alpha: 0.2,
                                         ),
-                                        SizedBox(width: 3.w),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Temperature Progress',
-                                                style: theme
-                                                    .textTheme.titleMedium
-                                                    ?.copyWith(
-                                                  color: colorScheme.onSurface,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              SizedBox(height: 1.w),
-                                              Text(
-                                                'No temperature data yet',
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                  color: colorScheme
-                                                      .onSurfaceVariant,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 4.w),
-                                    Container(
-                                      padding: EdgeInsets.all(4.w),
-                                      decoration: BoxDecoration(
-                                        color: colorScheme.primary.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.info_outline,
-                                            color: colorScheme.primary,
-                                            size: 5.w,
+                                      getTooltipItem:
+                                          (group, groupIndex, rod, rodIndex) {
+                                        return BarTooltipItem(
+                                          '${_sessionFrequencyData[group.x.toInt()]['sessions']} sessions',
+                                          TextStyle(
+                                            color: colorScheme.onSurface,
+                                            fontWeight: FontWeight.w600,
                                           ),
-                                          SizedBox(width: 3.w),
-                                          Expanded(
-                                            child: Text(
-                                              'Complete your first cold plunge session to see your temperature progress over time',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: colorScheme.onSurface,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            // Show actual chart when data exists
-                            return ChartContainerWidget(
-                              title: 'Temperature Progress',
-                              subtitle:
-                                  'Last ${_temperatureProgressData.length} sessions',
-                              chart: Semantics(
-                                label:
-                                    "Temperature Progress Line Chart - Last 10 Sessions",
-                                child: LineChart(
-                                  LineChartData(
-                                    gridData: FlGridData(
-                                      show: true,
-                                      drawVerticalLine: false,
-                                      horizontalInterval:
-                                          _calculateTemperatureInterval(),
-                                      getDrawingHorizontalLine: (value) {
-                                        return FlLine(
-                                          color: colorScheme.outline.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          strokeWidth: 1,
                                         );
                                       },
                                     ),
-                                    titlesData: FlTitlesData(
-                                      show: true,
-                                      rightTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
-                                      topTitles: const AxisTitles(
-                                        sideTitles:
-                                            SideTitles(showTitles: false),
-                                      ),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 30,
-                                          getTitlesWidget:
-                                              (double value, TitleMeta meta) {
-                                            final index = value.toInt();
-                                            if (index >= 0 &&
-                                                index <
-                                                    _temperatureProgressData
-                                                        .length) {
-                                              final sessionLabel =
-                                                  _temperatureProgressData[
-                                                          index]['session']
-                                                      as String;
-                                              return Padding(
-                                                padding: EdgeInsets.only(
-                                                  top: 2.w,
-                                                ),
-                                                child: Text(
-                                                  sessionLabel,
-                                                  style: TextStyle(
-                                                    color: colorScheme
-                                                        .onSurfaceVariant,
-                                                    fontWeight: FontWeight.w500,
-                                                    fontSize: 10.sp,
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                            return const SizedBox.shrink();
-                                          },
-                                        ),
-                                      ),
-                                      leftTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 50,
-                                          interval:
-                                              _calculateTemperatureInterval(),
-                                          getTitlesWidget:
-                                              (double value, TitleMeta meta) {
-                                            final interval =
-                                                _calculateTemperatureInterval();
-                                            // Only show labels divisible by interval to prevent overlapping
-                                            if (value % interval != 0) {
-                                              return const SizedBox.shrink();
-                                            }
-                                            return SideTitleWidget(
-                                              axisSide: meta.axisSide,
-                                              fitInside:
-                                                  const SideTitleFitInsideData(
-                                                enabled: true,
-                                                axisPosition: 0,
-                                                parentAxisSize: 50,
-                                                distanceFromEdge: 0,
-                                              ),
+                                  ),
+                                  titlesData: FlTitlesData(
+                                    show: true,
+                                    rightTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    topTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 30,
+                                        getTitlesWidget:
+                                            (double value, TitleMeta meta) {
+                                          final index = value.toInt();
+                                          if (index >= 0 &&
+                                              index <
+                                                  _sessionFrequencyData
+                                                      .length) {
+                                            final label = _selectedPeriod ==
+                                                    'Week'
+                                                ? _sessionFrequencyData[index]
+                                                    ['day'] as String
+                                                : _sessionFrequencyData[index]
+                                                    ['week'] as String;
+                                            return Padding(
+                                              padding:
+                                                  EdgeInsets.only(top: 2.w),
                                               child: Text(
-                                                '${ChartUtils.formatTemperatureLabel(value)}°F',
+                                                label,
                                                 style: TextStyle(
                                                   color: colorScheme
                                                       .onSurfaceVariant,
-                                                  fontWeight: FontWeight.w400,
-                                                  fontSize: 9.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 10.sp,
                                                 ),
-                                                textAlign: TextAlign.right,
                                               ),
                                             );
-                                          },
-                                        ),
+                                          }
+                                          return const Text('');
+                                        },
                                       ),
                                     ),
-                                    borderData: FlBorderData(
-                                      show: true,
-                                      border: Border.all(
-                                        color: colorScheme.outline.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                      ),
-                                    ),
-                                    minX: 0,
-                                    maxX: (_temperatureProgressData.length - 1)
-                                        .toDouble(),
-                                    minY: _getMinTemperature().toDouble(),
-                                    maxY: _getMaxTemperature().toDouble(),
-                                    lineBarsData: [
-                                      LineChartBarData(
-                                        spots: _temperatureProgressData
-                                            .asMap()
-                                            .entries
-                                            .map((entry) {
-                                          return FlSpot(
-                                            entry.key.toDouble(),
-                                            (entry.value['temp'] as num)
-                                                .toDouble(),
+                                    leftTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 45,
+                                        interval:
+                                            _calculateSessionFrequencyInterval(),
+                                        getTitlesWidget:
+                                            (double value, TitleMeta meta) {
+                                          return SideTitleWidget(
+                                            axisSide: meta.axisSide,
+                                            fitInside:
+                                                const SideTitleFitInsideData(
+                                              enabled: true,
+                                              axisPosition: 0,
+                                              parentAxisSize: 45,
+                                              distanceFromEdge: 0,
+                                            ),
+                                            child: Text(
+                                              ChartUtils.formatCountLabel(
+                                                  value),
+                                              style: TextStyle(
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                                fontWeight: FontWeight.w400,
+                                                fontSize: 9.sp,
+                                              ),
+                                              textAlign: TextAlign.right,
+                                            ),
                                           );
-                                        }).toList(),
-                                        isCurved: true,
-                                        color: colorScheme.primary,
-                                        barWidth: 3,
-                                        isStrokeCapRound: true,
-                                        dotData: const FlDotData(show: true),
-                                        belowBarData: BarAreaData(
-                                          show: true,
-                                          color: colorScheme.primary.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    lineTouchData: LineTouchData(
-                                      touchTooltipData: LineTouchTooltipData(
-                                        tooltipBgColor: colorScheme.surface,
-                                        tooltipBorder: BorderSide(
-                                          color: colorScheme.outline.withValues(
-                                            alpha: 0.2,
-                                          ),
-                                        ),
-                                        getTooltipItems: (touchedSpots) {
-                                          return touchedSpots.map((spot) {
-                                            final index = spot.x.toInt();
-                                            if (index >= 0 &&
-                                                index <
-                                                    _temperatureProgressData
-                                                        .length) {
-                                              final temp =
-                                                  (_temperatureProgressData[
-                                                          index]['temp'] as num)
-                                                      .toInt();
-                                              return LineTooltipItem(
-                                                '$temp°F',
-                                                TextStyle(
-                                                  color: colorScheme.onSurface,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              );
-                                            }
-                                            return null;
-                                          }).toList();
                                         },
                                       ),
                                     ),
                                   ),
+                                  borderData: FlBorderData(show: false),
+                                  barGroups: _sessionFrequencyData
+                                      .asMap()
+                                      .entries
+                                      .map((entry) {
+                                    return BarChartGroupData(
+                                      x: entry.key,
+                                      barRods: [
+                                        BarChartRodData(
+                                          toY: (entry.value['sessions'] as num)
+                                              .toDouble(),
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              colorScheme.primary.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                              colorScheme.primary,
+                                            ],
+                                            begin: Alignment.bottomCenter,
+                                            end: Alignment.topCenter,
+                                          ),
+                                          width: 8.w,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                  gridData: FlGridData(
+                                    show: true,
+                                    drawVerticalLine: false,
+                                    horizontalInterval:
+                                        _calculateSessionFrequencyInterval(),
+                                    getDrawingHorizontalLine: (value) {
+                                      return FlLine(
+                                        color: colorScheme.outline.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        strokeWidth: 1,
+                                      );
+                                    },
+                                  ),
                                 ),
                               ),
-                            );
-                          },
-                        ),
+                            ),
+                          ),
 
-                      // Bottom spacing only - removed all content below Temperature chart to prevent scrolling
-                      SizedBox(height: 4.w),
-                    ],
+                        // Temperature Progress Chart
+                        SizedBox(height: 3.w),
+                        if (_temperatureProgressData.isNotEmpty)
+                          Builder(
+                            builder: (context) {
+                              // Check if we have actual temperature data
+                              final hasActualData =
+                                  _temperatureProgressData.isNotEmpty;
+
+                              if (!hasActualData) {
+                                return Container(
+                                  margin: EdgeInsets.all(4.w),
+                                  padding: EdgeInsets.all(6.w),
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: colorScheme.shadow.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.ac_unit,
+                                            color: Colors.blue,
+                                            size: 6.w,
+                                          ),
+                                          SizedBox(width: 3.w),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Temperature Progress',
+                                                  style: theme
+                                                      .textTheme.titleMedium
+                                                      ?.copyWith(
+                                                    color:
+                                                        colorScheme.onSurface,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 1.w),
+                                                Text(
+                                                  'No temperature data yet',
+                                                  style: theme
+                                                      .textTheme.bodySmall
+                                                      ?.copyWith(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 4.w),
+                                      Container(
+                                        padding: EdgeInsets.all(4.w),
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.primary.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.info_outline,
+                                              color: colorScheme.primary,
+                                              size: 5.w,
+                                            ),
+                                            SizedBox(width: 3.w),
+                                            Expanded(
+                                              child: Text(
+                                                'Complete your first cold plunge session to see your temperature progress over time',
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: colorScheme.onSurface,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              // Show actual chart when data exists
+                              return ChartContainerWidget(
+                                title: 'Temperature Progress',
+                                subtitle:
+                                    'Last ${_temperatureProgressData.length} sessions',
+                                chart: Semantics(
+                                  label:
+                                      "Temperature Progress Line Chart - Last 10 Sessions",
+                                  child: LineChart(
+                                    LineChartData(
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: false,
+                                        horizontalInterval:
+                                            _calculateTemperatureInterval(),
+                                        getDrawingHorizontalLine: (value) {
+                                          return FlLine(
+                                            color:
+                                                colorScheme.outline.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            strokeWidth: 1,
+                                          );
+                                        },
+                                      ),
+                                      titlesData: FlTitlesData(
+                                        show: true,
+                                        rightTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        topTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 30,
+                                            getTitlesWidget:
+                                                (double value, TitleMeta meta) {
+                                              final index = value.toInt();
+                                              if (index >= 0 &&
+                                                  index <
+                                                      _temperatureProgressData
+                                                          .length) {
+                                                final sessionLabel =
+                                                    _temperatureProgressData[
+                                                            index]['session']
+                                                        as String;
+                                                return Padding(
+                                                  padding: EdgeInsets.only(
+                                                    top: 2.w,
+                                                  ),
+                                                  child: Text(
+                                                    sessionLabel,
+                                                    style: TextStyle(
+                                                      color: colorScheme
+                                                          .onSurfaceVariant,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      fontSize: 10.sp,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              return const SizedBox.shrink();
+                                            },
+                                          ),
+                                        ),
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 50,
+                                            interval:
+                                                _calculateTemperatureInterval(),
+                                            getTitlesWidget:
+                                                (double value, TitleMeta meta) {
+                                              final interval =
+                                                  _calculateTemperatureInterval();
+                                              // Only show labels divisible by interval to prevent overlapping
+                                              if (value % interval != 0) {
+                                                return const SizedBox.shrink();
+                                              }
+                                              return SideTitleWidget(
+                                                axisSide: meta.axisSide,
+                                                fitInside:
+                                                    const SideTitleFitInsideData(
+                                                  enabled: true,
+                                                  axisPosition: 0,
+                                                  parentAxisSize: 50,
+                                                  distanceFromEdge: 0,
+                                                ),
+                                                child: Text(
+                                                  '${ChartUtils.formatTemperatureLabel(value)}°F',
+                                                  style: TextStyle(
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
+                                                    fontWeight: FontWeight.w400,
+                                                    fontSize: 9.sp,
+                                                  ),
+                                                  textAlign: TextAlign.right,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      borderData: FlBorderData(
+                                        show: true,
+                                        border: Border.all(
+                                          color: colorScheme.outline.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                        ),
+                                      ),
+                                      minX: 0,
+                                      maxX:
+                                          (_temperatureProgressData.length - 1)
+                                              .toDouble(),
+                                      minY: _getMinTemperature().toDouble(),
+                                      maxY: _getMaxTemperature().toDouble(),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: _temperatureProgressData
+                                              .asMap()
+                                              .entries
+                                              .map((entry) {
+                                            return FlSpot(
+                                              entry.key.toDouble(),
+                                              (entry.value['temp'] as num)
+                                                  .toDouble(),
+                                            );
+                                          }).toList(),
+                                          isCurved: true,
+                                          color: colorScheme.primary,
+                                          barWidth: 3,
+                                          isStrokeCapRound: true,
+                                          dotData: const FlDotData(show: true),
+                                          belowBarData: BarAreaData(
+                                            show: true,
+                                            color:
+                                                colorScheme.primary.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      lineTouchData: LineTouchData(
+                                        touchTooltipData: LineTouchTooltipData(
+                                          tooltipBgColor: colorScheme.surface,
+                                          tooltipBorder: BorderSide(
+                                            color:
+                                                colorScheme.outline.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                          ),
+                                          getTooltipItems: (touchedSpots) {
+                                            return touchedSpots.map((spot) {
+                                              final index = spot.x.toInt();
+                                              if (index >= 0 &&
+                                                  index <
+                                                      _temperatureProgressData
+                                                          .length) {
+                                                final temp =
+                                                    (_temperatureProgressData[
+                                                                index]['temp']
+                                                            as num)
+                                                        .toInt();
+                                                return LineTooltipItem(
+                                                  '$temp°F',
+                                                  TextStyle(
+                                                    color:
+                                                        colorScheme.onSurface,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                );
+                                              }
+                                              return null;
+                                            }).toList();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
+                        // Bottom spacing only - removed all content below Temperature chart to prevent scrolling
+                        SizedBox(height: 4.w),
+                      ],
+                    ),
                   ),
-                ),
+      ),
     );
   }
 
@@ -959,6 +942,80 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
     // Ensure max is at least 20 degrees above min for readable chart
     final calculatedMin = _getMinTemperature();
     return roundedMax < (calculatedMin + 20) ? calculatedMin + 20 : roundedMax;
+  }
+
+  Widget _buildScrollableLoadingState(
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: 40.h),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: colorScheme.primary),
+              SizedBox(height: 4.w),
+              Text(
+                'Loading analytics...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScrollableErrorState(
+    ColorScheme colorScheme,
+    ThemeData theme,
+  ) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(height: 30.h),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 12.w,
+                color: colorScheme.error,
+              ),
+              SizedBox(height: 4.w),
+              Text(
+                'Failed to load analytics',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: colorScheme.error,
+                ),
+              ),
+              SizedBox(height: 2.w),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                child: Text(
+                  _errorMessage!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              SizedBox(height: 4.w),
+              ElevatedButton(
+                onPressed: _loadAnalyticsData,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   void _showComingSoonDialog(BuildContext context) {

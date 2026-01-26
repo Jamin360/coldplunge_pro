@@ -4,14 +4,18 @@ import 'package:sizer/sizer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app_export.dart';
+import 'core/env_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize environment configuration
+  await EnvConfig.instance.initialize();
+
   // Initialize Supabase
   await Supabase.initialize(
-    url: const String.fromEnvironment('SUPABASE_URL'),
-    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+    url: EnvConfig.instance.get('SUPABASE_URL'),
+    anonKey: EnvConfig.instance.get('SUPABASE_ANON_KEY'),
   );
 
   // Set preferred orientations
