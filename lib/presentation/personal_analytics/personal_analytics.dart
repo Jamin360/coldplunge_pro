@@ -1,6 +1,11 @@
+import 'dart:io';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
@@ -22,6 +27,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
       GlobalKey<RefreshIndicatorState>();
   String _selectedPeriod = 'Month';
   final AnalyticsService _analyticsService = AnalyticsService();
+  bool _isInitialized = false;
 
   // Real data from Supabase
   Map<String, dynamic> _analyticsData = {};
@@ -74,6 +80,18 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   void initState() {
     super.initState();
     _loadAnalyticsData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh data every time the screen becomes visible
+    // (except on first build which is handled by initState)
+    if (_isInitialized) {
+      _loadAnalyticsData();
+    } else {
+      _isInitialized = true;
+    }
   }
 
   Future<void> _loadAnalyticsData() async {
@@ -308,9 +326,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
         ),
         actions: [
           GestureDetector(
-            onTap: () {
-              _showComingSoonDialog(context);
-            },
+            onTap: _exportToPdf,
             child: Container(
               margin: EdgeInsets.all(2.w),
               padding: EdgeInsets.all(2.w),
@@ -1016,6 +1032,349 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
         ),
       ],
     );
+  }
+
+  Future<void> _exportToPdf() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Generating PDF...'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      final pdf = pw.Document();
+
+      // Add pages to PDF
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            // Header
+            pw.Header(
+              level: 0,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Personal Analytics',
+                        style: pw.TextStyle(
+                          fontSize: 28,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue900,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'ColdPlunge Pro',
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.Text(
+                    DateTime.now().toString().split(' ')[0],
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Key Metrics Section
+            pw.Text(
+              'Key Metrics',
+              style: pw.TextStyle(
+                fontSize: 18,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue900,
+              ),
+            ),
+            pw.SizedBox(height: 12),
+            pw.Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: _keyMetrics.map((metric) {
+                return pw.Container(
+                  width: 160,
+                  padding: const pw.EdgeInsets.all(16),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.blue50,
+                    borderRadius: pw.BorderRadius.circular(12),
+                    border: pw.Border.all(
+                      color: PdfColors.blue200,
+                      width: 1,
+                    ),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        metric['title'] as String,
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Text(
+                        metric['value'] as String,
+                        style: pw.TextStyle(
+                          fontSize: 20,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue900,
+                        ),
+                      ),
+                      if (metric['subtitle'] != null) ...[
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          metric['subtitle'] as String,
+                          style: pw.TextStyle(
+                            fontSize: 10,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            pw.SizedBox(height: 24),
+
+            // Statistics Summary
+            pw.Text(
+              'Statistics Summary',
+              style: pw.TextStyle(
+                fontSize: 18,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue900,
+              ),
+            ),
+            pw.SizedBox(height: 12),
+            pw.Table(
+              border: pw.TableBorder.all(
+                color: PdfColors.grey300,
+                width: 1,
+              ),
+              children: [
+                // Header row
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.blue50,
+                  ),
+                  children: [
+                    _buildTableCell('Metric', isHeader: true),
+                    _buildTableCell('Value', isHeader: true),
+                  ],
+                ),
+                // Data rows
+                _buildTableRow('Total Sessions',
+                    '${_analyticsData['total_sessions'] ?? 0}'),
+                _buildTableRow(
+                    'Total Time',
+                    _formatTotalDuration(
+                        _analyticsData['total_duration'] as int? ?? 0)),
+                _buildTableRow(
+                    'Average Duration',
+                    _formatDuration(
+                        _analyticsData['avg_duration'] as int? ?? 0)),
+                _buildTableRow('Current Streak',
+                    '${_analyticsData['current_streak'] ?? 0} days'),
+                _buildTableRow('Longest Streak',
+                    '${_analyticsData['longest_streak'] ?? 0} days'),
+                _buildTableRow('Average Temperature',
+                    '${(_analyticsData['avg_temperature'] as num?)?.toStringAsFixed(1) ?? 'N/A'}°F'),
+                _buildTableRow('Coldest Plunge',
+                    '${_analyticsData['coldest_plunge'] ?? 'N/A'}°F'),
+                _buildTableRow(
+                    'Personal Best',
+                    _formatDuration(
+                        _analyticsData['personal_best'] as int? ?? 0)),
+              ],
+            ),
+            pw.SizedBox(height: 24),
+
+            // Session Frequency (if available)
+            if (_sessionFrequencyData.isNotEmpty) ...[
+              pw.Text(
+                'Session Frequency',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blue900,
+                ),
+              ),
+              pw.SizedBox(height: 12),
+              pw.Text(
+                'Recent session activity by day of week',
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  color: PdfColors.grey600,
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                children: _sessionFrequencyData.map((data) {
+                  final count = data['sessions'] as int? ?? 0;
+                  final label = _selectedPeriod == 'Week'
+                      ? (data['day'] as String? ?? '')
+                      : (data['week'] as String? ?? '');
+                  return pw.Column(
+                    children: [
+                      pw.Container(
+                        height: 80,
+                        width: 40,
+                        child: pw.Stack(
+                          children: [
+                            pw.Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: pw.Container(
+                                height: count > 0
+                                    ? (count * 10).toDouble().clamp(5, 80)
+                                    : 0,
+                                decoration: pw.BoxDecoration(
+                                  color: PdfColors.blue400,
+                                  borderRadius: pw.BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Text(
+                        label,
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        count.toString(),
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.blue900,
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+              pw.SizedBox(height: 24),
+            ],
+
+            // Footer
+            pw.Divider(color: PdfColors.grey300),
+            pw.SizedBox(height: 12),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Generated by ColdPlunge Pro',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey600,
+                  ),
+                ),
+                pw.Text(
+                  'Page 1',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      // Save the PDF
+      final output = await getTemporaryDirectory();
+      final file = File(
+          '${output.path}/analytics_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await file.writeAsBytes(await pdf.save());
+
+      // Share the PDF
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'My ColdPlunge Pro Analytics Report',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('PDF generated successfully!'),
+            backgroundColor: AppTheme.successLight,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate PDF: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  pw.TableRow _buildTableRow(String label, String value) {
+    return pw.TableRow(
+      children: [
+        _buildTableCell(label),
+        _buildTableCell(value),
+      ],
+    );
+  }
+
+  pw.Widget _buildTableCell(String text, {bool isHeader = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: isHeader ? 12 : 11,
+          fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+          color: isHeader ? PdfColors.blue900 : PdfColors.grey800,
+        ),
+      ),
+    );
+  }
+
+  String _formatTotalDuration(int seconds) {
+    if (seconds < 3600) {
+      final minutes = seconds ~/ 60;
+      return '$minutes min';
+    } else {
+      final hours = seconds ~/ 3600;
+      final minutes = (seconds % 3600) ~/ 60;
+      return '${hours}h ${minutes}m';
+    }
   }
 
   void _showComingSoonDialog(BuildContext context) {

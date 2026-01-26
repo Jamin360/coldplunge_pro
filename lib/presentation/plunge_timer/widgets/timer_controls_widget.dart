@@ -149,7 +149,12 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
     if (!widget.isRunning) {
       // Start state
       return Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+        padding: EdgeInsets.only(
+          left: 8.w,
+          right: 8.w,
+          top: 4.h,
+          bottom: 4.h + MediaQuery.of(context).padding.bottom,
+        ),
         child: Column(
           children: [
             _buildControlButton(
@@ -174,7 +179,12 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
 
     // Running/Paused state
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+      padding: EdgeInsets.only(
+        left: 6.w,
+        right: 6.w,
+        top: 3.h,
+        bottom: 3.h + MediaQuery.of(context).padding.bottom,
+      ),
       child: Column(
         children: [
           // Primary control (pause/resume)
@@ -187,26 +197,53 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
           ),
           SizedBox(height: 3.h),
 
-          // Secondary controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildControlButton(
-                label: 'STOP',
-                icon: Icons.stop,
-                color: colorScheme.error,
-                onPressed: widget.onStop,
-                isDestructive: true,
+          // Finish Plunge button (full width)
+          SizedBox(
+            width: double.infinity,
+            height: 70,
+            child: ElevatedButton(
+              onPressed: widget.onStop,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFD97706), // Muted amber
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
               ),
-              _buildControlButton(
-                label: 'RESET',
-                icon: Icons.refresh,
-                color: colorScheme.onSurfaceVariant,
-                onPressed: widget.onReset,
+              child: Text(
+                'Finish Plunge',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ],
+            ),
           ),
           SizedBox(height: 2.h),
+
+          // Reset button (subtle text button)
+          TextButton(
+            onPressed: widget.onReset,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.refresh, size: 16, color: Colors.white),
+                SizedBox(width: 1.w),
+                Text(
+                  'Reset',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 1.h),
 
           // Status text
           Text(
@@ -216,7 +253,7 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
             style: theme.textTheme.bodySmall?.copyWith(
               color: widget.isPaused
                   ? colorScheme.onSurfaceVariant
-                  : colorScheme.primary,
+                  : const Color(0xFFD97706), // Muted amber
               fontWeight: widget.isPaused ? FontWeight.w400 : FontWeight.w500,
             ),
             textAlign: TextAlign.center,

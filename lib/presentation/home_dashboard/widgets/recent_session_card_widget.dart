@@ -150,7 +150,7 @@ class RecentSessionCardWidget extends StatelessWidget {
                                 _formatDate(
                                   DateTime.parse(
                                     session['created_at'] as String,
-                                  ),
+                                  ).toLocal(),
                                 ),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,

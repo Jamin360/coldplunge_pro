@@ -392,7 +392,8 @@ class SessionService {
         final dayEnd = dayStart.add(const Duration(days: 1));
 
         final daySessions = sessions.where((session) {
-          final sessionDate = DateTime.parse(session['created_at']);
+          // Parse UTC timestamp and convert to local time for comparison
+          final sessionDate = DateTime.parse(session['created_at']).toLocal();
           return sessionDate.isAfter(dayStart) && sessionDate.isBefore(dayEnd);
         }).toList();
 

@@ -123,23 +123,23 @@ class _AudioControlsWidgetState extends State<AudioControlsWidget>
     super.dispose();
   }
 
-  String _getAudioUrl(String trackName) {
+  String _getAudioPath(String trackName) {
     final soundscape = _soundscapes.firstWhere(
       (s) => s['name'] == trackName,
       orElse: () => _soundscapes[0],
     );
     final filename = soundscape['filename'] as String;
-    return 'https://achwyehtsjakhhazmsem.supabase.co/storage/v1/object/public/Soundscapes/$filename';
+    return 'audio/$filename';
   }
 
   Future<void> _playCurrentTrack() async {
     try {
-      final url = _getAudioUrl(widget.currentTrack);
+      final assetPath = _getAudioPath(widget.currentTrack);
       print('🎵 Loading soundscape: ${widget.currentTrack}');
-      print('🎵 URL: $url');
+      print('🎵 Asset path: $assetPath');
 
       await _audioPlayer.stop();
-      await _audioPlayer.play(UrlSource(url));
+      await _audioPlayer.play(AssetSource(assetPath));
 
       print('✅ Audio playback started successfully');
     } catch (e, stackTrace) {
@@ -164,7 +164,12 @@ class _AudioControlsWidgetState extends State<AudioControlsWidget>
     final colorScheme = theme.colorScheme;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+      margin: EdgeInsets.only(
+        left: 4.w,
+        right: 4.w,
+        top: 2.h,
+        bottom: _isExpanded ? 2.h : MediaQuery.of(context).padding.bottom + 16,
+      ),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),

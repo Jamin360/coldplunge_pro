@@ -151,7 +151,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                     _buildDetailRow(
                       'Date',
                       _formatDetailDate(
-                        DateTime.parse(session['created_at']),
+                        DateTime.parse(session['created_at']).toLocal(),
                       ),
                     ),
                     _buildDetailRow(

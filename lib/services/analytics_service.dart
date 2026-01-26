@@ -156,7 +156,9 @@ class AnalyticsService {
       for (int i = 0; i < sessions.length; i++) {
         final session = sessions[i];
         final temp = session['temperature'];
-        final createdAt = DateTime.parse(session['created_at'] as String);
+        // Parse UTC timestamp and convert to local time
+        final createdAt =
+            DateTime.parse(session['created_at'] as String).toLocal();
 
         // Create session label (e.g., "S1", "S2")
         final sessionLabel = 'S${i + 1}';
@@ -243,7 +245,8 @@ class AnalyticsService {
         final improvementScore = postMoodScore - preMoodScore;
 
         moodData.add({
-          'date': DateTime.parse(createdAt),
+          // Parse UTC timestamp and convert to local time
+          'date': DateTime.parse(createdAt).toLocal(),
           'preMood': preMood,
           'postMood': postMood,
           'preMoodScore': preMoodScore,
@@ -526,7 +529,9 @@ class AnalyticsService {
       // Extract unique dates (only the date part, not time)
       final sessionDates = <DateTime>{};
       for (final session in response) {
-        final createdAt = DateTime.parse(session['created_at'] as String);
+        // Parse UTC timestamp and convert to local time
+        final createdAt =
+            DateTime.parse(session['created_at'] as String).toLocal();
         final dateOnly = DateTime(
           createdAt.year,
           createdAt.month,

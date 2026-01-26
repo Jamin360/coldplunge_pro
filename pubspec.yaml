@@ -36,6 +36,8 @@ dependencies:
   geocoding: ^4.0.0
   http: ^1.6.0
   share_plus: ^7.2.1
+  screenshot: ^3.0.0
+  pdf: ^3.11.1
 
   supabase_flutter: any
   audioplayers: ^6.1.0
@@ -49,6 +51,7 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/audio/
     - env.json
   # CRITICAL ASSET MANAGEMENT RULES:
   # - DO NOT ADD NEW ASSET DIRECTORIES (assets/svg/, assets/icons/, etc.)

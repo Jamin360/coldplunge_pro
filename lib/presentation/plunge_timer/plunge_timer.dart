@@ -160,12 +160,12 @@ class _PlungeTimerState extends State<PlungeTimer>
       _isPaused = false;
     });
 
-    _backgroundController.reverse();
     HapticFeedback.heavyImpact();
 
     if (_sessionDuration.inSeconds > 10) {
       _showSessionCompletion();
     } else {
+      _backgroundController.reverse();
       _resetSession();
     }
   }
@@ -176,6 +176,7 @@ class _PlungeTimerState extends State<PlungeTimer>
       _isRunning = false;
       _isPaused = false;
     });
+    _backgroundController.reset();
     HapticFeedback.lightImpact();
   }
 
@@ -203,6 +204,7 @@ class _PlungeTimerState extends State<PlungeTimer>
   }
 
   void _showSessionCompletion() {
+    _backgroundController.reverse();
     setState(() => _showCompletion = true);
   }
 
@@ -422,6 +424,7 @@ class _PlungeTimerState extends State<PlungeTimer>
             children: [
               // Main content
               SafeArea(
+                bottom: false,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
@@ -568,6 +571,13 @@ class _PlungeTimerState extends State<PlungeTimer>
                           onStop: _stopSession,
                           onReset: _resetSession,
                         ),
+
+                        // Bottom safe area filler
+                        Container(
+                          width: double.infinity,
+                          height: MediaQuery.of(context).padding.bottom,
+                          color: colorScheme.surface,
+                        ),
                       ],
                     ],
                   ),
@@ -591,21 +601,18 @@ class _PlungeTimerState extends State<PlungeTimer>
 
               // Session completion modal
               if (_showCompletion)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: SessionCompletionWidget(
-                        duration: _sessionDuration.inSeconds,
-                        temperature: _temperature,
-                        onSaveSession: _handleSessionComplete,
-                        onDiscardSession: () {
-                          setState(() => _showCompletion = false);
-                          _resetSession();
-                        },
-                      ),
-                    ),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: SessionCompletionWidget(
+                    duration: _sessionDuration.inSeconds,
+                    temperature: _temperature,
+                    onSaveSession: _handleSessionComplete,
+                    onDiscardSession: () {
+                      setState(() => _showCompletion = false);
+                      _resetSession();
+                    },
                   ),
                 ),
 

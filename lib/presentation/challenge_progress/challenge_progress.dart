@@ -1,4 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
@@ -6,6 +10,7 @@ import '../../services/challenge_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import './widgets/progress_history_widget.dart';
 import './widgets/progress_ring_widget.dart';
+import './widgets/share_image_widget.dart';
 import './widgets/stats_section_widget.dart';
 
 class ChallengeProgress extends StatefulWidget {
@@ -17,6 +22,7 @@ class ChallengeProgress extends StatefulWidget {
 
 class _ChallengeProgressState extends State<ChallengeProgress> {
   final _challengeService = ChallengeService.instance;
+  final _screenshotController = ScreenshotController();
 
   bool _isLoading = true;
   String? _error;
@@ -721,16 +727,95 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
     }
   }
 
-  void _shareProgress() {
-    final progress = (_userChallengeData?['progress'] as num?)?.toInt() ?? 0;
-    final title = _challengeData?['title'] as String? ?? 'Challenge';
+  Future<void> _shareProgress() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Generating shareable image...'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Sharing: $progress% complete on $title challenge!'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      final progress =
+          (_userChallengeData?['progress'] as num?)?.toDouble() ?? 0.0;
+      final title = _challengeData?['title'] as String? ?? 'Challenge';
+      final targetValue = _challengeData?['target_value'] as int? ?? 0;
+      final difficulty = _challengeData?['difficulty'] as String? ?? 'medium';
+      final challengeType =
+          _challengeData?['challenge_type'] as String? ?? 'consistency';
+
+      // Format current and target values based on challenge type
+      String currentValue;
+      String targetValueStr;
+
+      if (challengeType.toLowerCase().contains('duration') ||
+          challengeType.toLowerCase().contains('time')) {
+        final currentSeconds = (progress * targetValue / 100).toInt();
+        currentValue = currentSeconds >= 60
+            ? '${currentSeconds ~/ 60}m ${currentSeconds % 60}s'
+            : '${currentSeconds}s';
+        targetValueStr = targetValue >= 60
+            ? '${targetValue ~/ 60}m ${targetValue % 60}s'
+            : '${targetValue}s';
+      } else if (challengeType.toLowerCase().contains('temperature') ||
+          challengeType.toLowerCase().contains('cold')) {
+        final currentTemp = (progress * targetValue / 100).toInt();
+        currentValue = '${currentTemp}°F';
+        targetValueStr = '${targetValue}°F';
+      } else {
+        final currentCount = (progress * targetValue / 100).toInt();
+        currentValue = currentCount.toString();
+        targetValueStr = targetValue.toString();
+      }
+
+      // Create the share image widget
+      final shareWidget = ShareImageWidget(
+        challengeTitle: title,
+        progress: progress,
+        currentValue: currentValue,
+        targetValue: targetValueStr,
+        daysRemaining: _calculateDaysRemaining(),
+        difficulty: difficulty,
+        challengeType: challengeType,
+      );
+
+      // Capture the widget as an image
+      final imageBytes = await _screenshotController.captureFromWidget(
+        shareWidget,
+        context: context,
+      );
+
+      // Save the image to a temporary file
+      final tempDir = await getTemporaryDirectory();
+      final file = File(
+          '${tempDir.path}/challenge_progress_${DateTime.now().millisecondsSinceEpoch}.png');
+      await file.writeAsBytes(imageBytes);
+
+      // Share the image
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text:
+            'Join me on my cold plunge journey! I\'m taking the "$title" challenge. #ColdPlungePro #ColdPlunge',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _rejoinChallenge() async {

@@ -132,10 +132,15 @@ class _SessionHistoryState extends State<SessionHistory> {
       final notes = (session['notes'] as String? ?? '').toLowerCase();
       final date =
           DateTime.parse(session['created_at']).toString().toLowerCase();
+      final mood = (session['mood'] as String? ?? '').toLowerCase();
+      final temperature =
+          (session['temperature']?.toString() ?? '').toLowerCase();
 
       return location.contains(_searchQuery) ||
           notes.contains(_searchQuery) ||
-          date.contains(_searchQuery);
+          date.contains(_searchQuery) ||
+          mood.contains(_searchQuery) ||
+          temperature.contains(_searchQuery);
     }).toList();
 
     // Sort sessions
@@ -479,7 +484,7 @@ class _SessionHistoryState extends State<SessionHistory> {
             child: TextField(
               onChanged: _onSearchChanged,
               decoration: InputDecoration(
-                hintText: 'Search by location, date, or notes...',
+                hintText: 'Search by location, mood, temp, date...',
                 prefixIcon: CustomIconWidget(
                   iconName: 'search',
                   color: colorScheme.onSurfaceVariant,

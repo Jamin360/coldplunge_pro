@@ -17,7 +17,8 @@ class SessionHistoryCardWidget extends StatelessWidget {
   });
 
   String _formatDate(String dateString) {
-    final date = DateTime.parse(dateString);
+    // Parse UTC timestamp from database and convert to local time
+    final date = DateTime.parse(dateString).toLocal();
     final now = DateTime.now();
     final difference = now.difference(date).inDays;
 

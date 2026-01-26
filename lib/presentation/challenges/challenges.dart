@@ -28,6 +28,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
 
   List<Map<String, dynamic>> _allChallenges = [];
   List<Map<String, dynamic>> _userChallenges = [];
+  List<Map<String, dynamic>> _completedChallenges = [];
   Map<String, dynamic>? _activeChallenge;
 
   @override
@@ -47,18 +48,21 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
     });
 
     try {
-      // Load all challenges and user challenges in parallel
+      // Load all challenges, user challenges, and completed challenges in parallel
       final results = await Future.wait([
         _challengeService.getActiveChallenges(),
         _challengeService.getUserActiveChallenges(),
+        _challengeService.getUserCompletedChallenges(),
       ]);
 
       final allChallenges = results[0];
       final userChallenges = results[1];
+      final completedChallenges = results[2];
 
       setState(() {
         _allChallenges = allChallenges;
         _userChallenges = userChallenges;
+        _completedChallenges = completedChallenges;
 
         // Find active challenge (first user challenge with highest progress)
         if (userChallenges.isNotEmpty) {
@@ -142,32 +146,83 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
         }).toList();
 
       case 'completed':
-        return _userChallenges
-            .where((uc) => uc['is_completed'] as bool? ?? false)
-            .map((uc) {
+        return _completedChallenges.map((uc) {
           final challenge = uc['challenges'] as Map<String, dynamic>;
+          final completedAt = uc['completed_at'] as String?;
+          String completedDate = 'Completed';
+          if (completedAt != null) {
+            try {
+              final date = DateTime.parse(completedAt).toLocal();
+              final now = DateTime.now();
+              final diff = now.difference(date).inDays;
+              if (diff == 0) {
+                completedDate = 'Completed today';
+              } else if (diff == 1) {
+                completedDate = 'Completed yesterday';
+              } else if (diff < 7) {
+                completedDate = 'Completed $diff days ago';
+              } else {
+                completedDate =
+                    'Completed on ${date.month}/${date.day}/${date.year}';
+              }
+            } catch (e) {
+              completedDate = 'Completed';
+            }
+          }
           return {
             ...challenge,
             'progress': 100.0,
             'isJoined': true,
+            'isCompleted': true,
             'isActive': false,
             'participants': challenge['participants_count'] ?? 0,
-            'timeLeft': 'Completed',
+            'timeLeft': completedDate,
             'image': challenge['image_url'] ?? '',
             'semanticLabel': _generateSemanticLabel(challenge),
           };
         }).toList();
 
       default: // 'all'
-        final joined = _userChallenges.map((uc) {
+        final userChallengeIds = <String>{};
+
+        final activeJoined = _userChallenges.map((uc) {
           final challenge = uc['challenges'] as Map<String, dynamic>;
+          userChallengeIds.add(challenge['id']);
           return {
             ...challenge,
             'progress': (uc['progress'] as num?)?.toDouble() ?? 0.0,
             'isJoined': true,
-            'isActive': !(uc['is_completed'] as bool? ?? false),
+            'isCompleted': false,
+            'isActive': true,
             'participants': challenge['participants_count'] ?? 0,
             'timeLeft': _calculateDaysLeft(challenge['end_date']),
+            'image': challenge['image_url'] ?? '',
+            'semanticLabel': _generateSemanticLabel(challenge),
+          };
+        }).toList();
+
+        final completedJoined = _completedChallenges.map((uc) {
+          final challenge = uc['challenges'] as Map<String, dynamic>;
+          userChallengeIds.add(challenge['id']);
+          final completedAt = uc['completed_at'] as String?;
+          String completedDate = 'Completed';
+          if (completedAt != null) {
+            try {
+              final date = DateTime.parse(completedAt).toLocal();
+              completedDate =
+                  'Completed ${date.month}/${date.day}/${date.year}';
+            } catch (e) {
+              completedDate = 'Completed';
+            }
+          }
+          return {
+            ...challenge,
+            'progress': 100.0,
+            'isJoined': true,
+            'isCompleted': true,
+            'isActive': false,
+            'participants': challenge['participants_count'] ?? 0,
+            'timeLeft': completedDate,
             'image': challenge['image_url'] ?? '',
             'semanticLabel': _generateSemanticLabel(challenge),
           };
@@ -179,6 +234,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
               (c) => {
                 ...c,
                 'isJoined': false,
+                'isCompleted': false,
                 'isActive': false,
                 'progress': 0.0,
                 'participants': c['participants_count'] ?? 0,
@@ -189,7 +245,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             )
             .toList();
 
-        return [...joined, ...notJoined];
+        return [...activeJoined, ...completedJoined, ...notJoined];
     }
   }
 

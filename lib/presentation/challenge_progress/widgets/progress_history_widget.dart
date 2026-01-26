@@ -154,7 +154,8 @@ class ProgressHistoryWidget extends StatelessWidget {
     if (dateStr == null) return 'Unknown date';
 
     try {
-      final date = DateTime.parse(dateStr);
+      // Parse UTC timestamp from database and convert to local time
+      final date = DateTime.parse(dateStr).toLocal();
       final now = DateTime.now();
       final difference = now.difference(date);
 

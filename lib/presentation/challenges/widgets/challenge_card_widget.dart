@@ -66,6 +66,7 @@ class ChallengeCardWidget extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final isActive = challenge['isActive'] as bool? ?? false;
     final isJoined = challenge['isJoined'] as bool? ?? false;
+    final isCompleted = challenge['isCompleted'] as bool? ?? false;
     final progress = (challenge['progress'] as num?)?.toDouble() ?? 0.0;
     final difficulty = challenge['difficulty'] as String? ?? 'beginner';
     final difficultyConfig = _getDifficultyConfig(difficulty);
@@ -114,6 +115,42 @@ class ChallengeCardWidget extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
+                  // Completed badge (if completed)
+                  if (isCompleted) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 3.w, vertical: 0.8.h),
+                      decoration: BoxDecoration(
+                        color: AppTheme.successLight.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppTheme.successLight,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 14,
+                            color: AppTheme.successLight,
+                          ),
+                          SizedBox(width: 1.w),
+                          Text(
+                            'COMPLETED',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppTheme.successLight,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10.sp,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 2.w),
+                  ],
                   // Difficulty badge
                   Container(
                     padding:
@@ -245,22 +282,38 @@ class ChallengeCardWidget extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: onTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isJoined
-                        ? colorScheme.primary.withValues(alpha: 0.1)
-                        : colorScheme.primary,
-                    foregroundColor:
-                        isJoined ? colorScheme.primary : Colors.white,
+                    backgroundColor: isCompleted
+                        ? AppTheme.successLight.withValues(alpha: 0.15)
+                        : isJoined
+                            ? colorScheme.primary.withValues(alpha: 0.1)
+                            : colorScheme.primary,
+                    foregroundColor: isCompleted
+                        ? AppTheme.successLight
+                        : isJoined
+                            ? colorScheme.primary
+                            : Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.symmetric(vertical: 1.8.h),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
+                      side: isCompleted
+                          ? BorderSide(color: AppTheme.successLight, width: 1.5)
+                          : BorderSide.none,
                     ),
                   ),
                   child: Text(
-                    isJoined ? 'View Progress' : 'Join Challenge',
+                    isCompleted
+                        ? 'View Achievement'
+                        : isJoined
+                            ? 'View Progress'
+                            : 'Join Challenge',
                     style: theme.textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: isJoined ? colorScheme.primary : Colors.white,
+                      color: isCompleted
+                          ? AppTheme.successLight
+                          : isJoined
+                              ? colorScheme.primary
+                              : Colors.white,
                     ),
                   ),
                 ),

@@ -179,7 +179,8 @@ class StatsSectionWidget extends StatelessWidget {
 
   String _formatDate(String dateStr) {
     try {
-      final date = DateTime.parse(dateStr);
+      // Parse UTC timestamp from database and convert to local time
+      final date = DateTime.parse(dateStr).toLocal();
       final months = [
         'Jan',
         'Feb',
