@@ -180,27 +180,17 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
     // Running/Paused state
     return Container(
       padding: EdgeInsets.only(
-        left: 6.w,
-        right: 6.w,
-        top: 3.h,
+        left: 4.w,
+        right: 4.w,
+        top: 4.h,
         bottom: 3.h + MediaQuery.of(context).padding.bottom,
       ),
       child: Column(
         children: [
-          // Primary control (pause/resume)
-          _buildControlButton(
-            label: widget.isPaused ? 'RESUME' : 'PAUSE',
-            icon: widget.isPaused ? Icons.play_arrow : Icons.pause,
-            color: colorScheme.primary,
-            onPressed: widget.isPaused ? widget.onResume : widget.onPause,
-            isPrimary: true,
-          ),
-          SizedBox(height: 3.h),
-
-          // Finish Plunge button (full width)
+          // Finish button (matches soundscapes panel width)
           SizedBox(
             width: double.infinity,
-            height: 70,
+            height: 100,
             child: ElevatedButton(
               onPressed: widget.onStop,
               style: ElevatedButton.styleFrom(
@@ -212,10 +202,10 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
                 elevation: 4,
               ),
               child: Text(
-                'Finish Plunge',
-                style: theme.textTheme.titleMedium?.copyWith(
+                'Finish',
+                style: theme.textTheme.headlineMedium?.copyWith(
                   color: Colors.white,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -247,14 +237,10 @@ class _TimerControlsWidgetState extends State<TimerControlsWidget>
 
           // Status text
           Text(
-            widget.isPaused
-                ? 'Session paused - tap resume to continue'
-                : 'Session in progress - stay strong!',
+            'Session in progress - stay strong!',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: widget.isPaused
-                  ? colorScheme.onSurfaceVariant
-                  : const Color(0xFFD97706), // Muted amber
-              fontWeight: widget.isPaused ? FontWeight.w400 : FontWeight.w500,
+              color: const Color(0xFFD97706), // Muted amber
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),

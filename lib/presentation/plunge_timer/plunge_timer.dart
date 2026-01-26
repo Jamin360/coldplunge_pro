@@ -7,6 +7,7 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/session_service.dart';
 import './widgets/audio_controls_widget.dart';
+import './widgets/breathing_exercise_widget.dart';
 import './widgets/session_completion_widget.dart';
 import './widgets/session_setup_widget.dart';
 import './widgets/timer_controls_widget.dart';
@@ -23,14 +24,16 @@ class _PlungeTimerState extends State<PlungeTimer>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   // Timer state
   Timer? _timer;
+  Timer? _countdownTimer;
   Duration _sessionDuration = Duration.zero;
   bool _isRunning = false;
   bool _isPaused = false;
   bool _isCountingDown = false;
-  int _countdownValue = 3;
+  int _countdownValue = 5;
 
   // Session data
   double _temperature = 15.0;
+  String _tempUnit = 'F'; // 'C' or 'F' - unit user selected in Session Setup
   String _location = 'Home Ice Bath';
   int _preMood = 2; // Default to Neutral
   int _postMood = 2; // Default to Neutral
@@ -47,6 +50,10 @@ class _PlungeTimerState extends State<PlungeTimer>
   bool _isAudioPlaying = false;
   String _currentTrack = 'Ocean Waves';
   double _audioVolume = 0.7;
+
+  // Breathing exercise state
+  bool _showBreathingExercise = false;
+  bool _isBreathingActive = false;
 
   // Animation controllers
   late AnimationController _backgroundController;
@@ -77,6 +84,7 @@ class _PlungeTimerState extends State<PlungeTimer>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _countdownTimer?.cancel();
     _backgroundController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
@@ -104,19 +112,23 @@ class _PlungeTimerState extends State<PlungeTimer>
   }
 
   void _startCountdown() {
+    // Cancel existing countdown timer if any
+    _countdownTimer?.cancel();
+
     setState(() {
       _isCountingDown = true;
-      _countdownValue = 3;
+      _countdownValue = 5;
     });
 
     HapticFeedback.mediumImpact();
 
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_countdownValue > 1) {
         setState(() => _countdownValue--);
         HapticFeedback.lightImpact();
       } else {
         timer.cancel();
+        _countdownTimer = null;
         setState(() => _isCountingDown = false);
         _startSession();
       }
@@ -124,6 +136,9 @@ class _PlungeTimerState extends State<PlungeTimer>
   }
 
   void _startSession() {
+    // Cancel existing timer if any to prevent duplicates
+    _timer?.cancel();
+
     setState(() {
       _isRunning = true;
       _isPaused = false;
@@ -171,6 +186,11 @@ class _PlungeTimerState extends State<PlungeTimer>
   }
 
   void _resetSession() {
+    _timer?.cancel();
+    _timer = null;
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
     setState(() {
       _sessionDuration = Duration.zero;
       _isRunning = false;
@@ -178,21 +198,38 @@ class _PlungeTimerState extends State<PlungeTimer>
     });
     _backgroundController.reset();
     HapticFeedback.lightImpact();
+
+    // Reopen Session Setup modal after clearing state
+    _showSessionSetup();
   }
 
   void _showSessionSetup() {
-    setState(() => _showSetup = true);
     HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (context) => SessionSetupWidget(
+        onSetupComplete: (temperature, location, mood, tempUnit) {
+          Navigator.pop(context);
+          _handleSetupComplete(temperature, location, mood, tempUnit);
+        },
+        onCancel: () => Navigator.pop(context),
+      ),
+    );
   }
 
   void _hideSessionSetup() {
-    setState(() => _showSetup = false);
+    // No longer needed with showModalBottomSheet
   }
 
-  void _handleSetupComplete(double temperature, String location, int mood) {
+  void _handleSetupComplete(
+      double temperature, String location, int mood, String tempUnit) {
     // Temperature is already in Fahrenheit from session_setup_widget conversion
     setState(() {
       _temperature = temperature; // Already Fahrenheit - stored directly
+      _tempUnit = tempUnit; // Store selected unit for display
       _location = location;
       _preMood = mood;
       _showSetup = false;
@@ -205,13 +242,29 @@ class _PlungeTimerState extends State<PlungeTimer>
 
   void _showSessionCompletion() {
     _backgroundController.reverse();
-    setState(() => _showCompletion = true);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (context) => SessionCompletionWidget(
+        duration: _sessionDuration.inSeconds,
+        temperature: _temperature,
+        tempUnit: _tempUnit,
+        onSaveSession: (mood, notes) {
+          Navigator.pop(context);
+          _handleSessionComplete(mood, notes);
+        },
+        onDiscardSession: () {
+          Navigator.pop(context);
+          _resetSession();
+        },
+      ),
+    );
   }
 
   void _handleSessionComplete(int mood, String notes) async {
-    // Optimistic UI update - close modal immediately
-    setState(() => _showCompletion = false);
-
     // Update state optimistically
     setState(() {
       _postMood = mood;
@@ -221,9 +274,28 @@ class _PlungeTimerState extends State<PlungeTimer>
     // Perform background save without blocking UI
     _saveSessionOptimistically();
 
-    // Show immediate success and reset
+    // Show immediate success
     _showOptimisticSuccessMessage();
-    _resetSession();
+
+    // Reset session state
+    _timer?.cancel();
+    _timer = null;
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+
+    setState(() {
+      _sessionDuration = Duration.zero;
+      _isRunning = false;
+      _isPaused = false;
+    });
+    _backgroundController.reset();
+
+    // Navigate back to home dashboard
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.homeDashboard,
+      (route) => false,
+    );
   }
 
   // Cached mood conversion for better performance
@@ -272,6 +344,7 @@ class _PlungeTimerState extends State<PlungeTimer>
         'location': _location,
         'duration': _sessionDuration.inSeconds,
         'temperature': _temperature.round(), // Already Fahrenheit
+        'temp_unit': _tempUnit, // Store unit user selected for display later
         'pre_mood': preMoodString,
         'post_mood': postMoodString,
         'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
@@ -314,6 +387,7 @@ class _PlungeTimerState extends State<PlungeTimer>
         'location': _location,
         'duration': _sessionDuration.inSeconds,
         'temperature': _temperature.round(), // Already Fahrenheit
+        'temp_unit': _tempUnit, // Store unit user selected for display later
         'pre_mood': preMoodString,
         'post_mood': postMoodString,
         'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
@@ -408,6 +482,24 @@ class _PlungeTimerState extends State<PlungeTimer>
 
   void _changeVolume(double volume) {
     setState(() => _audioVolume = volume);
+  }
+
+  void _toggleBreathingExercise() {
+    setState(() => _isBreathingActive = !_isBreathingActive);
+    HapticFeedback.mediumImpact();
+  }
+
+  void _closeBreathingExercise() {
+    setState(() {
+      _showBreathingExercise = false;
+      _isBreathingActive = false;
+    });
+    HapticFeedback.lightImpact();
+  }
+
+  void _openBreathingExercise() {
+    setState(() => _showBreathingExercise = true);
+    HapticFeedback.lightImpact();
   }
 
   @override
@@ -551,6 +643,45 @@ class _PlungeTimerState extends State<PlungeTimer>
                           ),
                         ),
 
+                        // Breathing exercise toggle button (only when running and not already shown)
+                        if (_isRunning && !_showBreathingExercise)
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4.w),
+                            child: TextButton.icon(
+                              onPressed: _openBreathingExercise,
+                              icon: Icon(
+                                Icons.air,
+                                size: 18,
+                                color: colorScheme.primary,
+                              ),
+                              label: Text(
+                                'Breathing Guide',
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 3.w,
+                                  vertical: 1.h,
+                                ),
+                                backgroundColor:
+                                    colorScheme.primary.withValues(alpha: 0.1),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // Breathing exercise (only show when session is running)
+                        if (_isRunning && _showBreathingExercise)
+                          BreathingExerciseWidget(
+                            isActive: _isBreathingActive,
+                            onToggle: _toggleBreathingExercise,
+                            onClose: _closeBreathingExercise,
+                          ),
+
                         // Audio controls
                         AudioControlsWidget(
                           isPlaying: _isAudioPlaying,
@@ -583,38 +714,6 @@ class _PlungeTimerState extends State<PlungeTimer>
                   ),
                 ),
               ),
-
-              // Session setup modal
-              if (_showSetup)
-                Positioned.fill(
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    child: Align(
-                      alignment: Alignment.bottomCenter,
-                      child: SessionSetupWidget(
-                        onSetupComplete: _handleSetupComplete,
-                        onCancel: _hideSessionSetup,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Session completion modal
-              if (_showCompletion)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: SessionCompletionWidget(
-                    duration: _sessionDuration.inSeconds,
-                    temperature: _temperature,
-                    onSaveSession: _handleSessionComplete,
-                    onDiscardSession: () {
-                      setState(() => _showCompletion = false);
-                      _resetSession();
-                    },
-                  ),
-                ),
 
               if (_showCompletionWidget)
                 Positioned(

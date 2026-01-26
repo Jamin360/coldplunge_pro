@@ -166,7 +166,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${_convertTemperature(_weatherData!['temperature'] as int).toStringAsFixed(1)}${_getTemperatureUnit()}',
+                        '${_convertTemperature(_weatherData!['temperature'] as int).round()}${_getTemperatureUnit()}',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           color: colorScheme.onSurface,
                           fontWeight: FontWeight.w700,
@@ -213,7 +213,7 @@ class _WeatherWidgetState extends State<WeatherWidget> {
                       _buildWeatherDetail(
                         context,
                         'Feels Like',
-                        '${_convertTemperature(_weatherData!['feelsLike'] as int).toStringAsFixed(1)}${_getTemperatureUnit()}',
+                        '${_convertTemperature(_weatherData!['feelsLike'] as int).round()}${_getTemperatureUnit()}',
                         'thermostat',
                       ),
                       SizedBox(height: 1.h),

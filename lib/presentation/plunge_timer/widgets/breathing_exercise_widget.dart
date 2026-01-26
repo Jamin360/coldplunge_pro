@@ -70,9 +70,15 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
       curve: Curves.easeInOut,
     ));
 
-    if (widget.isActive) {
-      _startBreathingCycle();
-    }
+    // Always fade in when widget is shown
+    _fadeController.forward();
+
+    // Auto-start breathing exercise when opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _startBreathingCycle();
+      }
+    });
   }
 
   @override
@@ -86,7 +92,7 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
   }
 
   void _startBreathingCycle() {
-    _fadeController.forward();
+    // Fade in is now handled in initState
     _runBreathingPhase();
   }
 
@@ -101,7 +107,7 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
   }
 
   void _runBreathingPhase() {
-    if (!widget.isActive || !mounted) return;
+    if (!mounted) return;
 
     setState(() {
       _currentInstruction = _instructions[_currentPhase];
@@ -123,7 +129,7 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
     }
 
     Future.delayed(Duration(seconds: _phaseDurations[_currentPhase]), () {
-      if (!widget.isActive || !mounted) return;
+      if (!mounted) return;
 
       _currentPhase = (_currentPhase + 1) % 4;
       if (_currentPhase == 0) {
@@ -290,16 +296,15 @@ class _BreathingExerciseWidgetState extends State<BreathingExerciseWidget>
                 child: ElevatedButton(
                   onPressed: () {
                     HapticFeedback.mediumImpact();
-                    widget.onToggle?.call();
+                    // Stop and close the breathing guide modal
+                    widget.onClose?.call();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.isActive
-                        ? colorScheme.error
-                        : colorScheme.primary,
+                    backgroundColor: colorScheme.error,
                     padding: EdgeInsets.symmetric(vertical: 1.5.h),
                   ),
                   child: Text(
-                    widget.isActive ? 'Stop Exercise' : 'Start Exercise',
+                    'Stop Exercise',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: colorScheme.onPrimary,
                       fontWeight: FontWeight.w600,
