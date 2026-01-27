@@ -60,6 +60,75 @@ class ChallengeCardWidget extends StatelessWidget {
     }
   }
 
+  // Build requirement label based on challenge type
+  String _buildRequirementLabel() {
+    final challengeType = challenge['challenge_type'] as String? ?? 'streak';
+    final targetValue = challenge['target_value'] as int?;
+    final durationDays = challenge['duration_days'] as int?;
+
+    switch (challengeType.toLowerCase()) {
+      case 'streak':
+        // Consecutive-day streak challenge
+        return '${targetValue ?? 7}-day streak';
+
+      case 'duration':
+        // Single-session duration challenge
+        if (targetValue != null) {
+          final minutes = (targetValue / 60).floor();
+          final seconds = targetValue % 60;
+          if (seconds == 0) {
+            return 'Single plunge ≥ $minutes min';
+          } else {
+            return 'Single plunge ≥ $minutes:${seconds.toString().padLeft(2, '0')} min';
+          }
+        }
+        return 'Duration challenge';
+
+      case 'consistency':
+        // Total sessions in a period
+        if (targetValue != null && durationDays != null) {
+          return 'Complete $targetValue sessions in $durationDays days';
+        } else if (targetValue != null) {
+          return 'Complete $targetValue sessions';
+        }
+        return 'Consistency challenge';
+
+      case 'temperature':
+        // Temperature threshold challenge
+        if (targetValue != null) {
+          return 'Plunge ≤ ${targetValue}°F';
+        }
+        return 'Temperature challenge';
+
+      default:
+        // Fallback: use description or generic label
+        final description = challenge['description'] as String?;
+        if (description != null && description.isNotEmpty) {
+          // Try to extract a short requirement from description
+          return description.split('.').first;
+        }
+        return 'Challenge requirement';
+    }
+  }
+
+  // Get icon for requirement based on challenge type
+  String _getRequirementIcon() {
+    final challengeType = challenge['challenge_type'] as String? ?? 'streak';
+
+    switch (challengeType.toLowerCase()) {
+      case 'streak':
+        return 'flag'; // Calendar/streak icon
+      case 'duration':
+        return 'timer'; // Stopwatch/timer icon
+      case 'consistency':
+        return 'calendar_today'; // Calendar for multiple sessions
+      case 'temperature':
+        return 'ac_unit'; // Snowflake/temperature icon
+      default:
+        return 'flag'; // Default fallback
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -210,19 +279,23 @@ class ChallengeCardWidget extends StatelessWidget {
               Row(
                 children: [
                   CustomIconWidget(
-                    iconName: 'flag',
+                    iconName: _getRequirementIcon(),
                     size: 16,
                     color: colorScheme.onSurfaceVariant,
                   ),
                   SizedBox(width: 1.w),
-                  Text(
-                    '${challenge['target_value'] ?? 7}-day streak',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      _buildRequirementLabel(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  SizedBox(width: 2.w),
                   CustomIconWidget(
                     iconName: 'schedule',
                     size: 16,

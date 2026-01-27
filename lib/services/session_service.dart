@@ -354,10 +354,10 @@ class SessionService {
     }
   }
 
-  /// Get recent sessions (last 5)
-  Future<List<Map<String, dynamic>>> getRecentSessions() async {
+  /// Get recent sessions with configurable limit
+  Future<List<Map<String, dynamic>>> getRecentSessions({int limit = 10}) async {
     return await getUserSessions(
-      limit: 10,
+      limit: limit,
       orderBy: 'created_at',
       ascending: false,
     );

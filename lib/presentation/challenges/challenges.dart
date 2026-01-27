@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../core/challenge_timing_helper.dart';
 import '../../services/challenge_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_bar.dart';
@@ -74,7 +75,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
               (activeUserChallenge['progress'] as num?)?.toDouble() ?? 0.0;
           final targetValue = challengeData['target_value'] as int? ?? 1;
           final currentValue = (progress * targetValue / 100).round();
-          final daysLeft = _calculateDaysLeft(challengeData['end_date']);
+          final daysLeft = _calculateUserChallengeTimeLeft(activeUserChallenge);
 
           _activeChallenge = {
             'id': challengeData['id'],
@@ -92,28 +93,44 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
         _isLoading = false;
       });
     } catch (e) {
+      // Log full error for debugging
+      print('Challenge loading error: $e');
+
       setState(() {
-        _error = 'Failed to load challenges: ${e.toString()}';
+        _error = 'Unable to load challenges. Please try again later.';
         _isLoading = false;
       });
     }
   }
 
-  String _calculateDaysLeft(String? endDateStr) {
-    if (endDateStr == null) return 'No deadline';
+  /// Calculate time left for a user's joined challenge using joined_at + duration
+  String _calculateUserChallengeTimeLeft(Map<String, dynamic> userChallenge) {
+    final joinedAtStr = userChallenge['joined_at'] as String?;
+    final challenge = userChallenge['challenges'] as Map<String, dynamic>?;
+    final durationDays = challenge?['duration_days'] as int?;
 
-    try {
-      final endDate = DateTime.parse(endDateStr);
-      final now = DateTime.now();
-      final difference = endDate.difference(now).inDays;
-
-      if (difference < 0) return 'Expired';
-      if (difference == 0) return 'Today';
-      if (difference == 1) return '1 day';
-      return '$difference days';
-    } catch (e) {
-      return 'Unknown';
+    if (joinedAtStr != null && durationDays != null) {
+      try {
+        final joinedAt = DateTime.parse(joinedAtStr);
+        return ChallengeTimingHelper.getTimeLeftString(
+          joinedAt: joinedAt,
+          durationDays: durationDays,
+        );
+      } catch (e) {
+        return 'Unknown';
+      }
     }
+
+    return 'No deadline';
+  }
+
+  /// Calculate time left for unjoined challenges (show full duration)
+  String _calculateUnjoinedChallengeTimeLeft(Map<String, dynamic> challenge) {
+    final durationDays = challenge['duration_days'] as int?;
+
+    if (durationDays == null) return 'No duration';
+
+    return ChallengeTimingHelper.getDurationString(durationDays);
   }
 
   @override
@@ -139,7 +156,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             'isJoined': true,
             'isActive': true,
             'participants': challenge['participants_count'] ?? 0,
-            'timeLeft': _calculateDaysLeft(challenge['end_date']),
+            'timeLeft': _calculateUserChallengeTimeLeft(uc),
             'image': challenge['image_url'] ?? '',
             'semanticLabel': _generateSemanticLabel(challenge),
           };
@@ -195,7 +212,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
             'isCompleted': false,
             'isActive': true,
             'participants': challenge['participants_count'] ?? 0,
-            'timeLeft': _calculateDaysLeft(challenge['end_date']),
+            'timeLeft': _calculateUserChallengeTimeLeft(uc),
             'image': challenge['image_url'] ?? '',
             'semanticLabel': _generateSemanticLabel(challenge),
           };
@@ -238,7 +255,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                 'isActive': false,
                 'progress': 0.0,
                 'participants': c['participants_count'] ?? 0,
-                'timeLeft': _calculateDaysLeft(c['end_date']),
+                'timeLeft': _calculateUnjoinedChallengeTimeLeft(c),
                 'image': c['image_url'] ?? '',
                 'semanticLabel': _generateSemanticLabel(c),
               },
@@ -382,7 +399,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 8.w),
             child: Text(
-              _error ?? 'Unknown error occurred',
+              'Please check your connection and try again.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
@@ -766,7 +783,7 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
                   _buildRuleItem('Water temperature below 60°F (15°C)'),
                   _buildRuleItem('Log sessions within 24 hours'),
 
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 2.h),
                 ],
               ),
             ),
@@ -774,7 +791,12 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
 
           // Action Button
           Container(
-            padding: EdgeInsets.all(4.w),
+            padding: EdgeInsets.only(
+              left: 4.w,
+              right: 4.w,
+              top: 2.h,
+              bottom: 4.h + MediaQuery.of(context).padding.bottom,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -843,10 +865,14 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
         await _loadData();
       }
     } catch (e) {
+      // Log full error for debugging
+      print('Join challenge error: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to join challenge: ${e.toString()}'),
+            content:
+                const Text('Unable to join challenge. Please try again later.'),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
           ),

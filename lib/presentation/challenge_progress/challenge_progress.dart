@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../core/challenge_timing_helper.dart';
 import '../../services/challenge_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import './widgets/progress_history_widget.dart';
@@ -69,8 +70,11 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
         _isLoading = false;
       });
     } catch (e) {
+      // Log full error for debugging
+      print('Challenge progress loading error: $e');
+
       setState(() {
-        _error = 'Failed to load challenge data: ${e.toString()}';
+        _error = 'Unable to load challenge progress. Please try again later.';
         _isLoading = false;
       });
     }
@@ -120,23 +124,24 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
   }
 
   String _calculateDaysRemaining() {
-    if (_challengeData == null) return 'Unknown';
+    if (_userChallengeData == null) return 'Unknown';
 
-    final endDate = _challengeData!['end_date'] as String?;
-    if (endDate == null) return 'No deadline';
+    final joinedAtStr = _userChallengeData!['joined_at'] as String?;
+    final durationDays = _challengeData?['duration_days'] as int?;
 
-    try {
-      final end = DateTime.parse(endDate);
-      final now = DateTime.now();
-      final difference = end.difference(now).inDays;
-
-      if (difference < 0) return 'Expired';
-      if (difference == 0) return 'Last day';
-      if (difference == 1) return '1 day left';
-      return '$difference days left';
-    } catch (e) {
-      return 'Unknown';
+    if (joinedAtStr != null && durationDays != null) {
+      try {
+        final joinedAt = DateTime.parse(joinedAtStr);
+        return ChallengeTimingHelper.getTimeLeftString(
+          joinedAt: joinedAt,
+          durationDays: durationDays,
+        );
+      } catch (e) {
+        return 'Unknown';
+      }
     }
+
+    return 'No deadline';
   }
 
   String _getChallengeStatus() {
@@ -145,11 +150,18 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
     final isCompleted = _userChallengeData!['is_completed'] as bool? ?? false;
     if (isCompleted) return 'Completed';
 
-    final endDate = _challengeData?['end_date'] as String?;
-    if (endDate != null) {
+    final joinedAtStr = _userChallengeData!['joined_at'] as String?;
+    final durationDays = _challengeData?['duration_days'] as int?;
+
+    if (joinedAtStr != null && durationDays != null) {
       try {
-        final end = DateTime.parse(endDate);
-        if (DateTime.now().isAfter(end)) return 'Failed';
+        final joinedAt = DateTime.parse(joinedAtStr);
+        if (ChallengeTimingHelper.isChallengeExpired(
+          joinedAt: joinedAt,
+          durationDays: durationDays,
+        )) {
+          return 'Failed';
+        }
       } catch (e) {
         // Invalid date format
       }
@@ -835,10 +847,14 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
         await _loadChallengeData();
       }
     } catch (e) {
+      // Log full error for debugging
+      print('Rejoin challenge error: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to rejoin: ${e.toString()}'),
+            content: const Text(
+                'Unable to rejoin challenge. Please try again later.'),
             backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
           ),

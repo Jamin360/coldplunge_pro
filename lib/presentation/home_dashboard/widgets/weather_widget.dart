@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../../../core/performance_logger.dart';
+import '../../../services/data_cache_service.dart';
 import '../../../services/weather_service.dart';
 
 class WeatherWidget extends StatefulWidget {
@@ -11,41 +13,79 @@ class WeatherWidget extends StatefulWidget {
   State<WeatherWidget> createState() => _WeatherWidgetState();
 }
 
-class _WeatherWidgetState extends State<WeatherWidget> {
+class _WeatherWidgetState extends State<WeatherWidget>
+    with AutomaticKeepAliveClientMixin {
   Map<String, dynamic>? _weatherData;
   bool _isLoading = true;
   bool _hasError = false;
-  bool _isFahrenheit = true; // Default to Fahrenheit
+  bool _isFahrenheit = true;
+
+  @override
+  bool get wantKeepAlive => true; // Keep weather data when scrolling
 
   @override
   void initState() {
     super.initState();
+    PerformanceLogger.start('WeatherWidget.init');
     _loadWeatherData();
   }
 
-  Future<void> _loadWeatherData() async {
+  Future<void> _loadWeatherData({bool forceRefresh = false}) async {
+    if (!mounted) return;
+
+    final cache = DataCacheService.instance;
+    const cacheKey = 'weather_data';
+    const cacheDuration = Duration(minutes: 30); // Weather updates every 30min
+
+    // Check cache first
+    if (!forceRefresh && cache.has(cacheKey)) {
+      final cachedData = cache.get<Map<String, dynamic>>(cacheKey);
+      if (cachedData != null) {
+        setState(() {
+          _weatherData = cachedData;
+          _isLoading = false;
+          _hasError = false;
+        });
+        PerformanceLogger.end('WeatherWidget.init', 'from cache');
+        return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
       _hasError = false;
     });
 
     try {
+      PerformanceLogger.start('WeatherWidget.fetchAPI');
       final weatherData = await WeatherService.instance.getCurrentWeather();
-      setState(() {
-        _weatherData = weatherData;
-        _isLoading = false;
-        _hasError = weatherData == null;
-      });
+      PerformanceLogger.end('WeatherWidget.fetchAPI');
+
+      if (weatherData != null) {
+        cache.set(cacheKey, weatherData, cacheDuration);
+      }
+
+      if (mounted) {
+        setState(() {
+          _weatherData = weatherData;
+          _isLoading = false;
+          _hasError = weatherData == null;
+        });
+      }
+      PerformanceLogger.end('WeatherWidget.init', 'from API');
     } catch (error) {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+      PerformanceLogger.log('WeatherWidget error: $error');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
     }
   }
 
   Future<void> _handleRefresh() async {
-    await _loadWeatherData();
+    await _loadWeatherData(forceRefresh: true);
   }
 
   double _convertTemperature(int celsius) {
@@ -64,6 +104,8 @@ class _WeatherWidgetState extends State<WeatherWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

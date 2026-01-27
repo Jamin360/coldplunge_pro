@@ -5,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/app_export.dart';
 import 'core/env_config.dart';
+import 'services/challenge_completion_notifier.dart';
+
+// Global navigator key for showing dialogs from anywhere
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +22,9 @@ Future<void> main() async {
     anonKey: EnvConfig.instance.get('SUPABASE_ANON_KEY'),
   );
 
+  // Initialize challenge completion notifier
+  await ChallengeCompletionNotifier.instance.initialize();
+
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -27,12 +34,38 @@ Future<void> main() async {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _setupChallengeCompletionListener();
+  }
+
+  void _setupChallengeCompletionListener() {
+    ChallengeCompletionNotifier.instance.completionStream.listen(
+      (completions) {
+        final context = navigatorKey.currentContext;
+        if (context != null && completions.isNotEmpty) {
+          ChallengeCompletionNotifier.showCompletionDialog(
+            context,
+            completions,
+          );
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Sizer(
       builder: (context, orientation, deviceType) {
         return MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'ColdPlunge Pro',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,

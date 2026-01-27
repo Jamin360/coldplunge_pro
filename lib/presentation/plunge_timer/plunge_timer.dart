@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../main.dart';
 import '../../services/session_service.dart';
+import '../../services/challenge_service.dart';
+import '../../services/challenge_completion_notifier.dart';
 import './widgets/audio_controls_widget.dart';
 import './widgets/breathing_exercise_widget.dart';
 import './widgets/session_completion_widget.dart';
@@ -240,8 +243,54 @@ class _PlungeTimerState extends State<PlungeTimer>
     });
   }
 
-  void _showSessionCompletion() {
+  void _showSessionCompletion() async {
     _backgroundController.reverse();
+
+    // Pre-detect challenge completions before showing modal
+    List<String>? completedChallengeNames;
+    try {
+      // Snapshot current challenge statuses
+      final activeChallengesBefore =
+          await ChallengeService.instance.getUserActiveChallenges();
+      Map<String, bool> statusesBefore = {};
+      for (final challenge in activeChallengesBefore) {
+        final challengeId = challenge['challenge_id'] as String;
+        final isCompleted = challenge['is_completed'] as bool? ?? false;
+        statusesBefore[challengeId] = isCompleted;
+      }
+
+      // Simulate what would happen if we save this session
+      // (We check if current progress would complete any challenges)
+      // For now, we'll check after a quick progress calculation
+      await ChallengeService.instance.updateUserChallengeProgress();
+
+      final activeChallengesAfter =
+          await ChallengeService.instance.getUserActiveChallenges();
+
+      List<String> completed = [];
+      for (final challenge in activeChallengesAfter) {
+        final challengeId = challenge['challenge_id'] as String;
+        final isCompletedNow = challenge['is_completed'] as bool? ?? false;
+        final wasCompletedBefore = statusesBefore[challengeId] ?? false;
+
+        if (!wasCompletedBefore && isCompletedNow) {
+          final challengeData =
+              challenge['challenges'] as Map<String, dynamic>?;
+          if (challengeData != null) {
+            completed.add(challengeData['title'] as String? ?? 'Challenge');
+          }
+        }
+      }
+
+      if (completed.isNotEmpty) {
+        completedChallengeNames = completed;
+      }
+    } catch (e) {
+      print('Failed to pre-detect challenge completions: $e');
+    }
+
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -252,6 +301,7 @@ class _PlungeTimerState extends State<PlungeTimer>
         duration: _sessionDuration.inSeconds,
         temperature: _temperature,
         tempUnit: _tempUnit,
+        completedChallenges: completedChallengeNames,
         onSaveSession: (mood, notes) {
           Navigator.pop(context);
           _handleSessionComplete(mood, notes);
@@ -265,17 +315,14 @@ class _PlungeTimerState extends State<PlungeTimer>
   }
 
   void _handleSessionComplete(int mood, String notes) async {
-    // Update state optimistically
+    // Update state
     setState(() {
       _postMood = mood;
       _sessionNotes = notes;
     });
 
-    // Perform background save without blocking UI
-    _saveSessionOptimistically();
-
-    // Show immediate success
-    _showOptimisticSuccessMessage();
+    // Save session and detect challenge completions
+    await _saveSessionWithChallengeDetection();
 
     // Reset session state
     _timer?.cancel();
@@ -291,11 +338,61 @@ class _PlungeTimerState extends State<PlungeTimer>
     _backgroundController.reset();
 
     // Navigate back to home dashboard
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.homeDashboard,
-      (route) => false,
-    );
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.homeDashboard,
+        (route) => false,
+      );
+    }
+  }
+
+  Future<void> _saveSessionWithChallengeDetection() async {
+    try {
+      // Validate and prepare session data
+      final preMoodString = _getMoodString(_preMood);
+      final postMoodString = _getMoodString(_postMood);
+
+      if (!_validateMoodString(preMoodString) ||
+          !_validateMoodString(postMoodString)) {
+        print(
+          'Invalid mood values detected: pre=$preMoodString, post=$postMoodString',
+        );
+        if (mounted) {
+          _showErrorMessage('Invalid session data');
+        }
+        return;
+      }
+
+      final sessionData = {
+        'location': _location,
+        'duration': _sessionDuration.inSeconds,
+        'temperature': _temperature.round(),
+        'temp_unit': _tempUnit,
+        'pre_mood': preMoodString,
+        'post_mood': postMoodString,
+        'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
+        'breathing_technique': _breathingTechnique,
+      };
+
+      // Save session to database
+      await SessionService.instance
+          .createSessionUltraOptimized(sessionData)
+          .timeout(const Duration(seconds: 8));
+
+      // Update challenge progress (challenges were already detected in modal)
+      await ChallengeService.instance.updateUserChallengeProgress();
+
+      if (mounted) {
+        // Show success message
+        _showOptimisticSuccessMessage();
+      }
+    } catch (error) {
+      print('Session save failed: $error');
+      if (mounted) {
+        _showErrorMessage(error);
+      }
+    }
   }
 
   // Cached mood conversion for better performance
@@ -364,74 +461,6 @@ class _PlungeTimerState extends State<PlungeTimer>
     }
   }
 
-  // Optimized session saving with timeout and better error handling
-  Future<void> _saveSessionDataOptimized() async {
-    const saveTimeout = Duration(seconds: 8); // Reduced timeout
-
-    try {
-      // Convert mood integers to mood enum strings (cached for performance)
-      final preMoodString = _getMoodString(_preMood);
-      final postMoodString = _getMoodString(_postMood);
-
-      // Validate mood strings before sending to database
-      if (!_validateMoodString(preMoodString) ||
-          !_validateMoodString(postMoodString)) {
-        throw Exception(
-          'Invalid mood values: pre=$preMoodString, post=$postMoodString',
-        );
-      }
-
-      // CRITICAL: Temperature is stored in Fahrenheit in database
-      // _temperature already contains Fahrenheit value from session setup conversion
-      final sessionData = {
-        'location': _location,
-        'duration': _sessionDuration.inSeconds,
-        'temperature': _temperature.round(), // Already Fahrenheit
-        'temp_unit': _tempUnit, // Store unit user selected for display later
-        'pre_mood': preMoodString,
-        'post_mood': postMoodString,
-        'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
-        'breathing_technique': _breathingTechnique,
-      };
-
-      // Add debug logging for temperature storage
-      print(
-        'Saving session with temperature: ${_temperature.round()}°F',
-      );
-
-      // Save with ultra-optimized method and timeout
-      await SessionService.instance
-          .createSessionUltraOptimized(sessionData)
-          .timeout(saveTimeout);
-
-      if (mounted) {
-        _showSuccessMessage();
-        _resetSession();
-      }
-    } catch (error) {
-      if (mounted) {
-        _showErrorMessage(error);
-      }
-    }
-  }
-
-  void _showSuccessMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 2.w),
-            Text('Session saved! 🎉'),
-          ],
-        ),
-        backgroundColor: const Color(0xFF14B8A6), // Success teal
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
   void _showErrorMessage(dynamic error) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -448,7 +477,7 @@ class _PlungeTimerState extends State<PlungeTimer>
         action: SnackBarAction(
           label: 'Retry',
           textColor: Colors.white,
-          onPressed: () => _saveSessionDataOptimized(),
+          onPressed: () => _saveSessionWithChallengeDetection(),
         ),
       ),
     );
@@ -643,8 +672,8 @@ class _PlungeTimerState extends State<PlungeTimer>
                           ),
                         ),
 
-                        // Breathing exercise toggle button (only when running and not already shown)
-                        if (_isRunning && !_showBreathingExercise)
+                        // Breathing exercise toggle button (available pre-session and during session)
+                        if (!_showBreathingExercise)
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 4.w),
                             child: TextButton.icon(
@@ -674,8 +703,8 @@ class _PlungeTimerState extends State<PlungeTimer>
                             ),
                           ),
 
-                        // Breathing exercise (only show when session is running)
-                        if (_isRunning && _showBreathingExercise)
+                        // Breathing exercise (available pre-session and during session)
+                        if (_showBreathingExercise)
                           BreathingExerciseWidget(
                             isActive: _isBreathingActive,
                             onToggle: _toggleBreathingExercise,

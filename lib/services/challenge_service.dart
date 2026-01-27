@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'challenge_completion_notifier.dart';
 
 class ChallengeService {
   static ChallengeService? _instance;
@@ -15,7 +16,7 @@ class ChallengeService {
           .from('challenges')
           .select()
           .eq('is_active', true)
-          .order('created_at', ascending: false);
+          .order('id', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (error) {
@@ -44,7 +45,7 @@ class ChallengeService {
       }
 
       final response =
-          await query.order('created_at', ascending: false).limit(limit ?? 100);
+          await query.order('id', ascending: false).limit(limit ?? 100);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (error) {
@@ -73,8 +74,7 @@ class ChallengeService {
               target_value,
               duration_days,
               reward_description,
-              image_url,
-              end_date
+              image_url
             )
           ''')
           .eq('user_id', currentUser.id)
@@ -139,12 +139,14 @@ class ChallengeService {
         throw Exception('Already participating in this challenge');
       }
 
-      // Create new participation record
+      final joinedAt = DateTime.now();
+
+      // Create new participation record (expiration calculated from joined_at + duration_days)
       final response = await _client.from('user_challenges').insert({
         'user_id': currentUser.id,
         'challenge_id': challengeId,
         'progress': 0.0,
-        'joined_at': DateTime.now().toIso8601String(),
+        'joined_at': joinedAt.toIso8601String(),
       }).select('''
             *,
             challenges:challenge_id (*)
@@ -195,6 +197,24 @@ class ChallengeService {
     }
 
     try {
+      // Get current state before update to detect completion transition
+      final beforeUpdate = await _client
+          .from('user_challenges')
+          .select('''
+            is_completed,
+            challenges:challenge_id (
+              id,
+              title,
+              difficulty
+            )
+          ''')
+          .eq('user_id', currentUser.id)
+          .eq('challenge_id', challengeId)
+          .maybeSingle();
+
+      final wasCompletedBefore =
+          beforeUpdate?['is_completed'] as bool? ?? false;
+
       final isCompleted = progress >= 100.0;
       final updates = {
         'progress': progress,
@@ -215,6 +235,25 @@ class ChallengeService {
             *,
             challenges:challenge_id (*)
           ''').single();
+
+      // Detect completion transition and notify
+      if (!wasCompletedBefore && isCompleted && beforeUpdate != null) {
+        final challengeData =
+            beforeUpdate['challenges'] as Map<String, dynamic>?;
+        if (challengeData != null) {
+          final completion = ChallengeCompletion(
+            id: '${currentUser.id}_$challengeId',
+            challengeId: challengeId,
+            name: challengeData['title'] as String? ?? 'Challenge',
+            difficulty: challengeData['difficulty'] as String?,
+            completedAt: DateTime.now(),
+          );
+
+          // Notify about completion
+          await ChallengeCompletionNotifier.instance
+              .notifyCompletion([completion]);
+        }
+      }
 
       return response;
     } catch (error) {
@@ -449,8 +488,7 @@ class ChallengeService {
               target_value,
               duration_days,
               reward_description,
-              image_url,
-              end_date
+              image_url
             )
           ''')
           .eq('user_id', currentUser.id)

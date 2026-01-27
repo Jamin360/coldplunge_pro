@@ -6,6 +6,8 @@ class SessionCompletionWidget extends StatefulWidget {
   final int duration;
   final double? temperature;
   final String tempUnit; // 'C' or 'F'
+  final List<String>?
+      completedChallenges; // NEW: List of completed challenge names
   final Function(int mood, String notes) onSaveSession;
   final VoidCallback onDiscardSession;
 
@@ -14,6 +16,7 @@ class SessionCompletionWidget extends StatefulWidget {
     required this.duration,
     this.temperature,
     this.tempUnit = 'F',
+    this.completedChallenges,
     required this.onSaveSession,
     required this.onDiscardSession,
   });
@@ -80,6 +83,8 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final bool hasChallengeCompletion = widget.completedChallenges != null &&
+        widget.completedChallenges!.isNotEmpty;
 
     return SlideTransition(
       position: _slideAnimation,
@@ -107,21 +112,67 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
-              Text(
-                'Session Complete!',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
+              // Conditional header based on challenge completion
+              if (hasChallengeCompletion) ...[
+                // Challenge Complete header
+                Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(2.h),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.emoji_events,
+                        size: 32,
+                        color: const Color(0xFF10B981),
+                      ),
+                    ),
+                    SizedBox(width: 3.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Challenge Complete!',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 0.5.h),
+                          Text(
+                            widget.completedChallenges!.length == 1
+                                ? widget.completedChallenges!.first
+                                : '${widget.completedChallenges!.first} +${widget.completedChallenges!.length - 1} more',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: const Color(0xFF10B981),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              SizedBox(height: 1.h),
-              Text(
-                'Great job! How was your plunge?',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
+              ] else ...[
+                // Normal Session Complete header
+                Text(
+                  'Session Complete!',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
+                SizedBox(height: 1.h),
+                Text(
+                  'Great job! How was your plunge?',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               SizedBox(height: 4.h),
 
               // Session stats - inline card layout
