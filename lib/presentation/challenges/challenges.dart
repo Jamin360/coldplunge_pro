@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
@@ -276,7 +277,23 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
-      appBar: CustomAppBar(title: 'Challenges', showBackButton: false),
+      appBar: CustomAppBar(
+        title: 'Challenges',
+        showBackButton: false,
+        actions: [
+          // DEBUG ONLY: Test button to trigger challenge completion popup
+          if (kDebugMode)
+            IconButton(
+              icon: const Icon(Icons.bug_report, color: Colors.orange),
+              tooltip: 'Debug: Test Challenge Complete Popup',
+              onPressed: () {
+                print('🐛 DEBUG: Test popup button tapped');
+                ChallengeService.instance.debugEmitCompletion();
+                print('🐛 DEBUG: Debug emission method called');
+              },
+            ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

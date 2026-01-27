@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'challenge_completion_notifier.dart';
 
 class ChallengeService {
   static ChallengeService? _instance;
@@ -8,6 +8,33 @@ class ChallengeService {
   ChallengeService._();
 
   final SupabaseClient _client = Supabase.instance.client;
+
+  // Stream controller for challenge completion events
+  final _completionController =
+      StreamController<List<ChallengeCompletion>>.broadcast();
+  Stream<List<ChallengeCompletion>> get completionStream =>
+      _completionController.stream;
+
+  // Cache of last known challenge statuses to detect transitions
+  final Map<String, bool> _lastKnownCompletionStatus = {};
+
+  // Set of notified challenge IDs to prevent duplicates
+  final Set<String> _notifiedChallengeIds = {};
+
+  /// DEBUG ONLY: Emit a fake completion event to test the popup system
+  void debugEmitCompletion() {
+    print('🐛 DEBUG: debugEmitCompletion() called');
+    final fakeCompletion = ChallengeCompletion(
+      id: 'debug_test_challenge',
+      challengeId: 'debug_test_challenge',
+      name: 'Debug Test Challenge',
+      difficulty: 'BEGINNER',
+      completedAt: DateTime.now(),
+    );
+    print('🐛 DEBUG: Emitting fake completion to stream');
+    _completionController.add([fakeCompletion]);
+    print('🐛 DEBUG: Fake completion emitted');
+  }
 
   /// Get all active challenges
   Future<List<Map<String, dynamic>>> getActiveChallenges() async {
@@ -237,21 +264,29 @@ class ChallengeService {
           ''').single();
 
       // Detect completion transition and notify
+      // (This handles direct progress updates, but the main detection
+      // happens in _detectAndEmitCompletions after batch updates)
       if (!wasCompletedBefore && isCompleted && beforeUpdate != null) {
-        final challengeData =
-            beforeUpdate['challenges'] as Map<String, dynamic>?;
-        if (challengeData != null) {
-          final completion = ChallengeCompletion(
-            id: '${currentUser.id}_$challengeId',
-            challengeId: challengeId,
-            name: challengeData['title'] as String? ?? 'Challenge',
-            difficulty: challengeData['difficulty'] as String?,
-            completedAt: DateTime.now(),
-          );
+        // Update cache immediately
+        _lastKnownCompletionStatus[challengeId] = true;
 
-          // Notify about completion
-          await ChallengeCompletionNotifier.instance
-              .notifyCompletion([completion]);
+        // Emit if not already notified
+        if (!_notifiedChallengeIds.contains(challengeId)) {
+          final challengeData =
+              beforeUpdate['challenges'] as Map<String, dynamic>?;
+          if (challengeData != null) {
+            final completion = ChallengeCompletion(
+              id: challengeId,
+              challengeId: challengeId,
+              name: challengeData['title'] as String? ?? 'Challenge',
+              difficulty: challengeData['difficulty'] as String?,
+              completedAt: DateTime.now(),
+            );
+            _notifiedChallengeIds.add(challengeId);
+            print(
+                '🎉 Emitting single challenge completion: ${completion.name}');
+            _completionController.add([completion]);
+          }
         }
       }
 
@@ -352,13 +387,20 @@ class ChallengeService {
   }
 
   /// Calculate challenge progress for a user based on sessions
+  /// This method detects completion transitions and emits events
   Future<void> updateUserChallengeProgress() async {
+    print('🔄 DEBUG: updateUserChallengeProgress() called');
     final currentUser = _client.auth.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      print('⚠️  DEBUG: No current user in updateUserChallengeProgress');
+      return;
+    }
 
     try {
       // Get user's active challenges
+      print('📋 DEBUG: Fetching active challenges...');
       final activeChallenges = await getUserActiveChallenges();
+      print('📋 DEBUG: Found ${activeChallenges.length} active challenge(s)');
 
       for (final userChallenge in activeChallenges) {
         final challenge = userChallenge['challenges'] as Map<String, dynamic>;
@@ -438,16 +480,98 @@ class ChallengeService {
         }
 
         // Update progress if changed
-        if (progress != (userChallenge['progress'] as num? ?? 0.0)) {
+        final oldProgress = (userChallenge['progress'] as num? ?? 0.0);
+        if (progress != oldProgress) {
+          print(
+              '📈 DEBUG: Progress changed for ${challenge['title']}: $oldProgress% → $progress%');
           await updateChallengeProgress(
             challengeId: challenge['id'],
             progress: progress,
           );
+        } else {
+          print(
+              '📊 DEBUG: No progress change for ${challenge['title']}: $progress%');
         }
       }
+
+      // After all updates, detect completion transitions
+      print('🔍 DEBUG: Calling _detectAndEmitCompletions()...');
+      await _detectAndEmitCompletions();
+      print('🔍 DEBUG: _detectAndEmitCompletions() completed');
     } catch (error) {
       // Silent fail - don't throw for background progress updates
       print('Challenge progress update failed: $error');
+    }
+  }
+
+  /// Detect newly completed challenges and emit events
+  /// Called after any operation that might complete a challenge
+  Future<void> _detectAndEmitCompletions() async {
+    print('🔍 DEBUG: _detectAndEmitCompletions() called');
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      print('⚠️  DEBUG: No current user, skipping detection');
+      return;
+    }
+
+    try {
+      // Fetch fresh user challenges from network (not cached)
+      final userChallenges = await _client.from('user_challenges').select('''
+            challenge_id,
+            is_completed,
+            challenges:challenge_id (
+              id,
+              title,
+              difficulty
+            )
+          ''').eq('user_id', currentUser.id).is_('completed_at', null);
+
+      final List<ChallengeCompletion> newlyCompleted = [];
+
+      for (final uc in userChallenges) {
+        final challengeId = uc['challenge_id'] as String;
+        final isCompleted = uc['is_completed'] as bool? ?? false;
+        final wasCompleted = _lastKnownCompletionStatus[challengeId] ?? false;
+
+        // Detect transition: was not completed -> now completed
+        if (!wasCompleted && isCompleted) {
+          // Check if we've already notified about this completion
+          if (!_notifiedChallengeIds.contains(challengeId)) {
+            final challengeData = uc['challenges'] as Map<String, dynamic>?;
+            if (challengeData != null) {
+              final completion = ChallengeCompletion(
+                id: challengeId,
+                challengeId: challengeId,
+                name: challengeData['title'] as String? ?? 'Challenge',
+                difficulty: challengeData['difficulty'] as String?,
+                completedAt: DateTime.now(),
+              );
+              newlyCompleted.add(completion);
+              _notifiedChallengeIds.add(challengeId);
+            }
+          }
+        }
+
+        // Update cache with current status
+        _lastKnownCompletionStatus[challengeId] = isCompleted;
+      }
+
+      // Emit event if there are new completions
+      if (newlyCompleted.isNotEmpty) {
+        print(
+            '🎉 DEBUG: Found ${newlyCompleted.length} newly completed challenge(s)');
+        print(
+            '🎉 DEBUG: Challenge IDs: ${newlyCompleted.map((c) => c.challengeId).join(", ")}');
+        print(
+            '🎉 DEBUG: Challenge names: ${newlyCompleted.map((c) => c.name).join(", ")}');
+        print('🎉 DEBUG: Emitting to completionStream...');
+        _completionController.add(newlyCompleted);
+        print('🎉 DEBUG: Completion event emitted successfully');
+      } else {
+        print('ℹ️  DEBUG: No new completions detected');
+      }
+    } catch (error) {
+      print('Failed to detect challenge completions: $error');
     }
   }
 
@@ -523,4 +647,26 @@ class ChallengeService {
       throw Exception('Failed to get challenge sessions: $error');
     }
   }
+
+  /// Dispose resources
+  void dispose() {
+    _completionController.close();
+  }
+}
+
+/// Data class for challenge completion events
+class ChallengeCompletion {
+  final String id;
+  final String challengeId;
+  final String name;
+  final String? difficulty;
+  final DateTime completedAt;
+
+  ChallengeCompletion({
+    required this.id,
+    required this.challengeId,
+    required this.name,
+    this.difficulty,
+    required this.completedAt,
+  });
 }

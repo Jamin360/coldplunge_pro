@@ -5,10 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../main.dart';
 import '../../services/session_service.dart';
 import '../../services/challenge_service.dart';
-import '../../services/challenge_completion_notifier.dart';
 import './widgets/audio_controls_widget.dart';
 import './widgets/breathing_exercise_widget.dart';
 import './widgets/session_completion_widget.dart';
@@ -243,51 +241,8 @@ class _PlungeTimerState extends State<PlungeTimer>
     });
   }
 
-  void _showSessionCompletion() async {
+  void _showSessionCompletion() {
     _backgroundController.reverse();
-
-    // Pre-detect challenge completions before showing modal
-    List<String>? completedChallengeNames;
-    try {
-      // Snapshot current challenge statuses
-      final activeChallengesBefore =
-          await ChallengeService.instance.getUserActiveChallenges();
-      Map<String, bool> statusesBefore = {};
-      for (final challenge in activeChallengesBefore) {
-        final challengeId = challenge['challenge_id'] as String;
-        final isCompleted = challenge['is_completed'] as bool? ?? false;
-        statusesBefore[challengeId] = isCompleted;
-      }
-
-      // Simulate what would happen if we save this session
-      // (We check if current progress would complete any challenges)
-      // For now, we'll check after a quick progress calculation
-      await ChallengeService.instance.updateUserChallengeProgress();
-
-      final activeChallengesAfter =
-          await ChallengeService.instance.getUserActiveChallenges();
-
-      List<String> completed = [];
-      for (final challenge in activeChallengesAfter) {
-        final challengeId = challenge['challenge_id'] as String;
-        final isCompletedNow = challenge['is_completed'] as bool? ?? false;
-        final wasCompletedBefore = statusesBefore[challengeId] ?? false;
-
-        if (!wasCompletedBefore && isCompletedNow) {
-          final challengeData =
-              challenge['challenges'] as Map<String, dynamic>?;
-          if (challengeData != null) {
-            completed.add(challengeData['title'] as String? ?? 'Challenge');
-          }
-        }
-      }
-
-      if (completed.isNotEmpty) {
-        completedChallengeNames = completed;
-      }
-    } catch (e) {
-      print('Failed to pre-detect challenge completions: $e');
-    }
 
     if (!mounted) return;
 
@@ -301,7 +256,6 @@ class _PlungeTimerState extends State<PlungeTimer>
         duration: _sessionDuration.inSeconds,
         temperature: _temperature,
         tempUnit: _tempUnit,
-        completedChallenges: completedChallengeNames,
         onSaveSession: (mood, notes) {
           Navigator.pop(context);
           _handleSessionComplete(mood, notes);
@@ -375,13 +329,18 @@ class _PlungeTimerState extends State<PlungeTimer>
         'breathing_technique': _breathingTechnique,
       };
 
-      // Save session to database
+      // Save session to database first
+      print('💾 DEBUG: Saving session to database...');
       await SessionService.instance
           .createSessionUltraOptimized(sessionData)
           .timeout(const Duration(seconds: 8));
+      print('💾 DEBUG: Session saved successfully');
 
-      // Update challenge progress (challenges were already detected in modal)
+      // Update challenge progress - this will trigger detection and emit events
+      // The stream listener in main.dart will show the popup
+      print('🎯 DEBUG: Calling updateUserChallengeProgress()...');
       await ChallengeService.instance.updateUserChallengeProgress();
+      print('🎯 DEBUG: updateUserChallengeProgress() completed');
 
       if (mounted) {
         // Show success message
