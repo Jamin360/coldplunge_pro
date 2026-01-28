@@ -95,6 +95,11 @@ class _HomeDashboardState extends State<HomeDashboard>
     Navigator.pushNamed(context, '/plunge-timer');
   }
 
+  void _navigateToSettings() {
+    HapticFeedback.lightImpact();
+    Navigator.pushNamed(context, AppRoutes.settings);
+  }
+
   void _viewSessionDetails(Map<String, dynamic> session) {
     _showSessionDetails(session);
   }
@@ -317,52 +322,6 @@ class _HomeDashboardState extends State<HomeDashboard>
     );
   }
 
-  Future<void> _handleLogout() async {
-    final shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorLight,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldLogout == true && mounted) {
-      try {
-        await AuthService.instance.signOut();
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            AppRoutes.loginScreen,
-            (route) => false,
-          );
-        }
-      } catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Logout failed: $error'),
-              backgroundColor: AppTheme.errorLight,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -376,12 +335,12 @@ class _HomeDashboardState extends State<HomeDashboard>
         actions: [
           IconButton(
             icon: CustomIconWidget(
-              iconName: 'logout',
+              iconName: 'account_circle',
               color: colorScheme.onSurface,
               size: 24,
             ),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
+            onPressed: _navigateToSettings,
+            tooltip: 'Account Settings',
           ),
         ],
       ),

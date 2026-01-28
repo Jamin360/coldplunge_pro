@@ -56,7 +56,7 @@ class CommunityService {
               'Profile picture of ${userProfile?['full_name'] ?? 'user'}',
           'activityType': item['activity_type'],
           'content': item['content'],
-          'timestamp': DateTime.parse(item['created_at']),
+          'timestamp': DateTime.parse(item['created_at']).toLocal(),
           'likes': item['likes_count'] ?? 0,
           'imageUrl': item['image_url'],
           'relatedSession': session != null
@@ -264,7 +264,7 @@ class CommunityService {
               'Profile picture of ${userProfile?['full_name'] ?? 'user'}',
           'activityType': item['activity_type'],
           'content': item['content'],
-          'timestamp': DateTime.parse(item['created_at']),
+          'timestamp': DateTime.parse(item['created_at']).toLocal(),
           'likes': item['likes_count'] ?? 0,
         });
       }

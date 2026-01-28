@@ -23,7 +23,7 @@ class ChallengeService {
 
   /// DEBUG ONLY: Emit a fake completion event to test the popup system
   void debugEmitCompletion() {
-    print('🐛 DEBUG: debugEmitCompletion() called');
+    // print('🐛 DEBUG: debugEmitCompletion() called');
     final fakeCompletion = ChallengeCompletion(
       id: 'debug_test_challenge',
       challengeId: 'debug_test_challenge',
@@ -31,9 +31,9 @@ class ChallengeService {
       difficulty: 'BEGINNER',
       completedAt: DateTime.now(),
     );
-    print('🐛 DEBUG: Emitting fake completion to stream');
+    // print('🐛 DEBUG: Emitting fake completion to stream');
     _completionController.add([fakeCompletion]);
-    print('🐛 DEBUG: Fake completion emitted');
+    // print('🐛 DEBUG: Fake completion emitted');
   }
 
   /// Get all active challenges
@@ -283,8 +283,8 @@ class ChallengeService {
               completedAt: DateTime.now(),
             );
             _notifiedChallengeIds.add(challengeId);
-            print(
-                '🎉 Emitting single challenge completion: ${completion.name}');
+            // print(
+            //     '🎉 Emitting single challenge completion: ${completion.name}');
             _completionController.add([completion]);
           }
         }
@@ -386,155 +386,412 @@ class ChallengeService {
     }
   }
 
+  /// Helper: Get sessions within challenge window
+  Future<List<Map<String, dynamic>>> _getSessionsInWindow({
+    required String userId,
+    required DateTime joinedAt,
+    required int durationDays,
+  }) async {
+    final windowEnd = joinedAt.add(Duration(days: durationDays));
+    final now = DateTime.now();
+    final effectiveEnd = windowEnd.isBefore(now) ? windowEnd : now;
+
+    final sessions = await _client
+        .from('plunge_sessions')
+        .select('created_at, duration, temperature')
+        .eq('user_id', userId)
+        .gte('created_at', joinedAt.toIso8601String())
+        .lte('created_at', effectiveEnd.toIso8601String())
+        .order('created_at', ascending: true);
+
+    return List<Map<String, dynamic>>.from(sessions);
+  }
+
+  /// Helper: Extract distinct session days from sessions (using local timezone)
+  Set<DateTime> _distinctSessionDays(List<Map<String, dynamic>> sessions) {
+    final Set<DateTime> days = {};
+    for (final session in sessions) {
+      // Parse timestamp and convert to LOCAL time
+      final sessionDate =
+          DateTime.parse(session['created_at'] as String).toLocal();
+      // Extract just the date part (year, month, day) in local timezone
+      final day =
+          DateTime(sessionDate.year, sessionDate.month, sessionDate.day);
+      days.add(day);
+    }
+    return days;
+  }
+
+  /// Helper: Compute longest consecutive day streak
+  int _computeConsecutiveStreak(
+      Set<DateTime> sessionDays, String challengeName) {
+    if (sessionDays.isEmpty) {
+      // print('   📅 No session days found for streak calculation');
+      return 0;
+    }
+
+    final sortedDays = sessionDays.toList()..sort();
+    // print(
+    //     '   📅 Session days (local time): ${sortedDays.map((d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}').join(', ')}');
+
+    int currentStreak = 1;
+    int maxStreak = 1;
+
+    for (int i = 1; i < sortedDays.length; i++) {
+      final diff = sortedDays[i].difference(sortedDays[i - 1]).inDays;
+      if (diff == 1) {
+        currentStreak++;
+        if (currentStreak > maxStreak) {
+          maxStreak = currentStreak;
+        }
+      } else {
+        currentStreak = 1;
+      }
+    }
+
+    // print('   📊 Longest consecutive streak: $maxStreak day(s)');
+    return maxStreak;
+  }
+
+  /// Helper: Compute Weekend Warrior progress (Sat+Sun for N weeks)
+  double _computeWeekendWarriorProgress({
+    required List<Map<String, dynamic>> sessions,
+    required int targetWeeks,
+  }) {
+    // Group sessions by week number
+    final Map<String, Set<int>> weekendDaysByWeek = {};
+
+    for (final session in sessions) {
+      // Convert to LOCAL time for proper weekday detection
+      final sessionDate =
+          DateTime.parse(session['created_at'] as String).toLocal();
+      final weekday = sessionDate.weekday;
+
+      // Only count Saturday (6) and Sunday (7)
+      if (weekday == DateTime.saturday || weekday == DateTime.sunday) {
+        // Calculate week key (ISO week year-week)
+        final weekNumber = _getIsoWeekNumber(sessionDate);
+        final weekKey = '${sessionDate.year}-W$weekNumber';
+
+        weekendDaysByWeek.putIfAbsent(weekKey, () => {});
+        weekendDaysByWeek[weekKey]!.add(weekday);
+      }
+    }
+
+    // Count how many weeks have BOTH Saturday AND Sunday
+    int completeWeeks = 0;
+    for (final weekdays in weekendDaysByWeek.values) {
+      if (weekdays.contains(DateTime.saturday) &&
+          weekdays.contains(DateTime.sunday)) {
+        completeWeeks++;
+      }
+    }
+
+    return targetWeeks > 0
+        ? (completeWeeks / targetWeeks * 100).clamp(0, 100)
+        : 0.0;
+  }
+
+  /// Helper: Get ISO week number
+  int _getIsoWeekNumber(DateTime date) {
+    final dayOfYear =
+        int.parse(date.difference(DateTime(date.year, 1, 1)).inDays.toString());
+    return ((dayOfYear - date.weekday + 10) / 7).floor();
+  }
+
+  /// Helper: Single session duration threshold progress
+  double _computeSingleSessionThresholdProgress({
+    required List<Map<String, dynamic>> sessions,
+    required int targetSeconds,
+  }) {
+    if (sessions.isEmpty) return 0.0;
+
+    // Find the longest single session
+    int maxDuration = 0;
+    for (final session in sessions) {
+      final duration = session['duration'] as int? ?? 0;
+      if (duration > maxDuration) {
+        maxDuration = duration;
+      }
+    }
+
+    if (maxDuration >= targetSeconds) {
+      return 100.0;
+    }
+
+    // Show progress toward the threshold
+    return targetSeconds > 0
+        ? (maxDuration / targetSeconds * 100).clamp(0, 100)
+        : 0.0;
+  }
+
+  /// Helper: Temperature threshold streak (consecutive days at temp)
+  double _computeTemperatureStreakProgress({
+    required List<Map<String, dynamic>> sessions,
+    required int targetDays,
+    required double tempThresholdF,
+  }) {
+    final Set<DateTime> qualifyingDays = {};
+
+    for (final session in sessions) {
+      final temperature = (session['temperature'] as num?)?.toDouble() ?? 999.0;
+      if (temperature <= tempThresholdF) {
+        // Convert to LOCAL time for proper day grouping
+        final sessionDate =
+            DateTime.parse(session['created_at'] as String).toLocal();
+        final day =
+            DateTime(sessionDate.year, sessionDate.month, sessionDate.day);
+        qualifyingDays.add(day);
+      }
+    }
+
+    final streak = _computeConsecutiveStreak(qualifyingDays, 'Temp Streak');
+    return targetDays > 0 ? (streak / targetDays * 100).clamp(0, 100) : 0.0;
+  }
+
+  /// Helper: Temperature threshold session count
+  double _computeTemperatureSessionCountProgress({
+    required List<Map<String, dynamic>> sessions,
+    required int targetCount,
+    required double tempThresholdF,
+  }) {
+    int qualifyingSessions = 0;
+
+    for (final session in sessions) {
+      final temperature = (session['temperature'] as num?)?.toDouble() ?? 999.0;
+      if (temperature <= tempThresholdF) {
+        qualifyingSessions++;
+      }
+    }
+
+    return targetCount > 0
+        ? (qualifyingSessions / targetCount * 100).clamp(0, 100)
+        : 0.0;
+  }
+
   /// Calculate challenge progress for a user based on sessions
   /// This method detects completion transitions and emits events
   Future<void> updateUserChallengeProgress() async {
-    print('🔄 DEBUG: updateUserChallengeProgress() called');
+    // print('🔄 DEBUG: updateUserChallengeProgress() called');
     final currentUser = _client.auth.currentUser;
     if (currentUser == null) {
-      print('⚠️  DEBUG: No current user in updateUserChallengeProgress');
+      // print('⚠️  DEBUG: No current user in updateUserChallengeProgress');
       return;
     }
 
     try {
       // Get user's active challenges
-      print('📋 DEBUG: Fetching active challenges...');
+      // print('📋 DEBUG: Fetching active challenges...');
       final activeChallenges = await getUserActiveChallenges();
-      print('📋 DEBUG: Found ${activeChallenges.length} active challenge(s)');
+      // print('📋 DEBUG: Found ${activeChallenges.length} active challenge(s)');
 
       for (final userChallenge in activeChallenges) {
         final challenge = userChallenge['challenges'] as Map<String, dynamic>;
+        final challengeTitle = challenge['title'] as String? ?? '';
         final challengeType = challenge['challenge_type'] as String;
         final targetValue = challenge['target_value'] as int?;
         final durationDays = challenge['duration_days'] as int;
-        final joinedAt = DateTime.parse(userChallenge['joined_at']);
+        final joinedAt = DateTime.parse(userChallenge['joined_at']).toLocal();
+
+        // print('\n📝 DEBUG: Processing "$challengeTitle"');
+        // print(
+        //     '   Type: $challengeType, Target: $targetValue, Duration: $durationDays days');
+        // print('   Joined: ${joinedAt.toIso8601String()}');
+
+        // Get sessions within challenge window
+        final sessions = await _getSessionsInWindow(
+          userId: currentUser.id,
+          joinedAt: joinedAt,
+          durationDays: durationDays,
+        );
+
+        // print('   Sessions in window: ${sessions.length}');
 
         double progress = 0.0;
+        String debugMetric = '';
 
-        switch (challengeType) {
-          case 'streak':
-            // Get current streak from user profile
-            final profile = await _client
-                .from('user_profiles')
-                .select('streak_count')
-                .eq('id', currentUser.id)
-                .single();
-
-            final currentStreak = profile['streak_count'] as int? ?? 0;
+        // Route to correct calculation based on challenge title/type
+        switch (challengeTitle) {
+          // BEGINNER CHALLENGES
+          case 'Quick Start':
+            // 5 sessions in 7 days
+            final count = sessions.length;
             progress = targetValue != null && targetValue > 0
-                ? (currentStreak / targetValue * 100).clamp(0, 100)
+                ? (count / targetValue * 100).clamp(0, 100)
                 : 0.0;
+            debugMetric = 'Sessions: $count/${targetValue ?? 0}';
             break;
 
-          case 'duration':
-            // Check if any single session meets the target duration
-            final sessions = await _client
-                .from('plunge_sessions')
-                .select('duration')
-                .eq('user_id', currentUser.id)
-                .gte('created_at', joinedAt.toIso8601String())
-                .order('duration', ascending: false)
-                .limit(1);
-
-            if (sessions.isNotEmpty) {
-              final maxDuration = sessions.first['duration'] as int? ?? 0;
-              if (targetValue != null && maxDuration >= targetValue) {
-                progress = 100.0;
-              } else if (targetValue != null && targetValue > 0) {
-                progress = (maxDuration / targetValue * 100).clamp(0, 100);
-              }
-            }
+          case 'Two-Minute Club':
+            // Single session ≥ 2 minutes (120 seconds)
+            progress = _computeSingleSessionThresholdProgress(
+              sessions: sessions,
+              targetSeconds: targetValue ?? 120,
+            );
+            final maxDuration = sessions.isEmpty
+                ? 0
+                : sessions
+                    .map((s) => s['duration'] as int? ?? 0)
+                    .reduce((a, b) => a > b ? a : b);
+            debugMetric =
+                'Max duration: ${maxDuration}s / ${targetValue ?? 120}s';
             break;
 
-          case 'consistency':
-            // Count total sessions since joining the challenge
-            final sessions = await _client
-                .from('plunge_sessions')
-                .select('id')
-                .eq('user_id', currentUser.id)
-                .gte('created_at', joinedAt.toIso8601String());
+          case 'Ice Breaker':
+            // 10 sessions ≤ 12°C (53.6°F)
+            progress = _computeTemperatureSessionCountProgress(
+              sessions: sessions,
+              targetCount: 10,
+              tempThresholdF: 53.6,
+            );
+            final qualCount = sessions
+                .where((s) =>
+                    ((s['temperature'] as num?)?.toDouble() ?? 999.0) <= 53.6)
+                .length;
+            debugMetric = 'Sessions ≤ 53.6°F: $qualCount/10';
+            break;
 
+          // INTERMEDIATE CHALLENGES
+          case 'Ice Warrior – 7 Day Streak':
+            // 7 consecutive days
+            final sessionDays = _distinctSessionDays(sessions);
+            final streak =
+                _computeConsecutiveStreak(sessionDays, challengeTitle);
             progress = targetValue != null && targetValue > 0
-                ? (sessions.length / targetValue * 100).clamp(0, 100)
+                ? (streak / targetValue * 100).clamp(0, 100)
                 : 0.0;
+            debugMetric = 'Current streak: $streak/${targetValue ?? 0} days';
             break;
 
-          case 'temperature':
-            // Check if any session meets temperature requirement
-            final sessions = await _client
-                .from('plunge_sessions')
-                .select('temperature')
-                .eq('user_id', currentUser.id)
-                .gte('created_at', joinedAt.toIso8601String());
-
-            final hasMetTarget = sessions.any((s) =>
-                (s['temperature'] as int? ?? 100) <= (targetValue ?? -100));
-
-            if (hasMetTarget) {
-              // Calculate based on days completed vs challenge duration
-              final daysSinceStart =
-                  DateTime.now().difference(joinedAt).inDays + 1;
-              progress = (daysSinceStart / durationDays * 100).clamp(0, 100);
-            }
+          case 'Weekend Warrior':
+            // Both Sat+Sun for 4 weeks
+            progress = _computeWeekendWarriorProgress(
+              sessions: sessions,
+              targetWeeks: 4,
+            );
+            debugMetric = 'Weekend Warrior progress';
             break;
+
+          case 'Monthly Milestone':
+            // 14-day consecutive streak
+            final sessionDays = _distinctSessionDays(sessions);
+            final streak =
+                _computeConsecutiveStreak(sessionDays, challengeTitle);
+            progress = (streak / 14 * 100).clamp(0, 100);
+            debugMetric = 'Current streak: $streak/14 days';
+            break;
+
+          // ADVANCED CHALLENGES
+          case 'Ice Master':
+            // 14-day consecutive streak (Advanced)
+            final sessionDays = _distinctSessionDays(sessions);
+            final streak =
+                _computeConsecutiveStreak(sessionDays, challengeTitle);
+            progress = (streak / 14 * 100).clamp(0, 100);
+            debugMetric = 'Current streak: $streak/14 days';
+            break;
+
+          case 'Extreme Cold Challenge':
+            // ≤ 50°F (10°C) for 14 consecutive days
+            progress = _computeTemperatureStreakProgress(
+              sessions: sessions,
+              targetDays: 14,
+              tempThresholdF: 50.0,
+            );
+            debugMetric = 'Temp streak progress';
+            break;
+
+          case 'Arctic Explorer – 30 Day Journey':
+            // 30 sessions in 30 days
+            final count = sessions.length;
+            progress = (count / 30 * 100).clamp(0, 100);
+            debugMetric = 'Sessions: $count/30';
+            break;
+
+          default:
+            // Fallback for unknown challenges
+            // print('   ⚠️  Unknown challenge: $challengeTitle');
+            continue;
         }
+
+        // print('   $debugMetric');
+        // print('   Progress: ${progress.toStringAsFixed(1)}%');
 
         // Update progress if changed
         final oldProgress = (userChallenge['progress'] as num? ?? 0.0);
-        if (progress != oldProgress) {
-          print(
-              '📈 DEBUG: Progress changed for ${challenge['title']}: $oldProgress% → $progress%');
+        if ((progress - oldProgress).abs() > 0.1) {
+          // print(
+          //     '   📈 Updating: ${oldProgress.toStringAsFixed(1)}% → ${progress.toStringAsFixed(1)}%');
           await updateChallengeProgress(
             challengeId: challenge['id'],
             progress: progress,
           );
         } else {
-          print(
-              '📊 DEBUG: No progress change for ${challenge['title']}: $progress%');
+          // print('   📊 No change needed');
         }
       }
 
       // After all updates, detect completion transitions
-      print('🔍 DEBUG: Calling _detectAndEmitCompletions()...');
+      // print('\n🔍 DEBUG: Calling _detectAndEmitCompletions()...');
       await _detectAndEmitCompletions();
-      print('🔍 DEBUG: _detectAndEmitCompletions() completed');
+      // print('🔍 DEBUG: _detectAndEmitCompletions() completed');
     } catch (error) {
       // Silent fail - don't throw for background progress updates
-      print('Challenge progress update failed: $error');
+      // print('Challenge progress update failed: $error');
     }
   }
 
   /// Detect newly completed challenges and emit events
   /// Called after any operation that might complete a challenge
   Future<void> _detectAndEmitCompletions() async {
-    print('🔍 DEBUG: _detectAndEmitCompletions() called');
+    // print('🔍 DEBUG: _detectAndEmitCompletions() called');
     final currentUser = _client.auth.currentUser;
     if (currentUser == null) {
-      print('⚠️  DEBUG: No current user, skipping detection');
+      // print('⚠️  DEBUG: No current user, skipping detection');
       return;
     }
 
     try {
-      // Fetch fresh user challenges from network (not cached)
+      // Fetch ALL user challenges (including completed ones) from network
+      // This is critical: we need to see completed challenges to detect transitions
+      // print('📥 DEBUG: Fetching all user_challenges from database...');
       final userChallenges = await _client.from('user_challenges').select('''
             challenge_id,
             is_completed,
+            completed_at,
+            progress,
             challenges:challenge_id (
               id,
               title,
               difficulty
             )
-          ''').eq('user_id', currentUser.id).is_('completed_at', null);
+          ''').eq('user_id', currentUser.id);
+
+      // print(
+      //     '📊 DEBUG: Fetched ${userChallenges.length} total user_challenge(s)');
 
       final List<ChallengeCompletion> newlyCompleted = [];
 
       for (final uc in userChallenges) {
         final challengeId = uc['challenge_id'] as String;
-        final isCompleted = uc['is_completed'] as bool? ?? false;
+        final isCompletedFlag = uc['is_completed'] as bool? ?? false;
+        final completedAt = uc['completed_at'] as String?;
+        final progress = (uc['progress'] as num? ?? 0.0).toDouble();
+
+        // Determine if challenge is completed using multiple signals
+        final isCompleted =
+            isCompletedFlag || completedAt != null || progress >= 100.0;
+
+        // print(
+        //     '🔎 DEBUG: Challenge $challengeId - is_completed=$isCompletedFlag, completed_at=$completedAt, progress=$progress, final isCompleted=$isCompleted');
+
         final wasCompleted = _lastKnownCompletionStatus[challengeId] ?? false;
 
         // Detect transition: was not completed -> now completed
         if (!wasCompleted && isCompleted) {
+          // print(
+          //     '🎯 DEBUG: Transition detected for $challengeId: wasCompleted=$wasCompleted -> isCompleted=$isCompleted');
+
           // Check if we've already notified about this completion
           if (!_notifiedChallengeIds.contains(challengeId)) {
             final challengeData = uc['challenges'] as Map<String, dynamic>?;
@@ -548,7 +805,10 @@ class ChallengeService {
               );
               newlyCompleted.add(completion);
               _notifiedChallengeIds.add(challengeId);
+              // print('✅ DEBUG: Added to newlyCompleted: ${completion.name}');
             }
+          } else {
+            // print('⏭️  DEBUG: Already notified for $challengeId, skipping');
           }
         }
 
@@ -558,20 +818,24 @@ class ChallengeService {
 
       // Emit event if there are new completions
       if (newlyCompleted.isNotEmpty) {
-        print(
-            '🎉 DEBUG: Found ${newlyCompleted.length} newly completed challenge(s)');
-        print(
-            '🎉 DEBUG: Challenge IDs: ${newlyCompleted.map((c) => c.challengeId).join(", ")}');
-        print(
-            '🎉 DEBUG: Challenge names: ${newlyCompleted.map((c) => c.name).join(", ")}');
-        print('🎉 DEBUG: Emitting to completionStream...');
+        // print(
+        //     '🎉 DEBUG: Found ${newlyCompleted.length} newly completed challenge(s)');
+        // print(
+        //     '🎉 DEBUG: Challenge IDs: ${newlyCompleted.map((c) => c.challengeId).join(", ")}');
+        // print(
+        //     '🎉 DEBUG: Challenge names: ${newlyCompleted.map((c) => c.name).join(", ")}');
+        // print('🎉 DEBUG: Emitting to completionStream...');
         _completionController.add(newlyCompleted);
-        print('🎉 DEBUG: Completion event emitted successfully');
+        // print('🎉 DEBUG: Completion event emitted successfully');
       } else {
-        print('ℹ️  DEBUG: No new completions detected');
+        // print('ℹ️  DEBUG: No new completions detected');
+        // print(
+        //     'ℹ️  DEBUG: Cache state: ${_lastKnownCompletionStatus.length} challenge(s) tracked');
+        // print(
+        //     'ℹ️  DEBUG: Already notified: ${_notifiedChallengeIds.length} challenge(s)');
       }
     } catch (error) {
-      print('Failed to detect challenge completions: $error');
+      // print('❌ DEBUG: Failed to detect challenge completions: $error');
     }
   }
 

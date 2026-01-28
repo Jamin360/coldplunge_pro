@@ -8,6 +8,7 @@ import '../presentation/personal_analytics/personal_analytics.dart';
 import '../presentation/challenges/challenges.dart';
 import '../presentation/session_history/session_history.dart';
 import '../presentation/challenge_progress/challenge_progress.dart';
+import '../presentation/settings/settings_page.dart';
 
 class AppRoutes {
   // Route constants
@@ -20,6 +21,7 @@ class AppRoutes {
   static const String challenges = '/challenges';
   static const String sessionHistory = '/session-history';
   static const String challengeProgress = '/challenge-progress';
+  static const String settings = '/settings';
 
   // Initial route
   static const String initial = splashScreen;
@@ -36,6 +38,7 @@ class AppRoutes {
       challenges: (context) => const Challenges(),
       sessionHistory: (context) => const SessionHistory(),
       challengeProgress: (context) => const ChallengeProgress(),
+      settings: (context) => const SettingsPage(),
     };
   }
 }

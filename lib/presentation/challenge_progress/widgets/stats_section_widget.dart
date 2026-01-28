@@ -205,7 +205,7 @@ class StatsSectionWidget extends StatelessWidget {
     if (dateJoined == null) return '';
 
     try {
-      final joined = DateTime.parse(dateJoined!);
+      final joined = DateTime.parse(dateJoined!).toLocal();
       final now = DateTime.now();
       final days = now.difference(joined).inDays;
 

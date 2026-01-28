@@ -131,7 +131,7 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
 
     if (joinedAtStr != null && durationDays != null) {
       try {
-        final joinedAt = DateTime.parse(joinedAtStr);
+        final joinedAt = DateTime.parse(joinedAtStr).toLocal();
         return ChallengeTimingHelper.getTimeLeftString(
           joinedAt: joinedAt,
           durationDays: durationDays,
@@ -155,7 +155,7 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
 
     if (joinedAtStr != null && durationDays != null) {
       try {
-        final joinedAt = DateTime.parse(joinedAtStr);
+        final joinedAt = DateTime.parse(joinedAtStr).toLocal();
         if (ChallengeTimingHelper.isChallengeExpired(
           joinedAt: joinedAt,
           durationDays: durationDays,

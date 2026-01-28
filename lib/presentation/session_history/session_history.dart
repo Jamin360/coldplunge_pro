@@ -84,7 +84,7 @@ class _SessionHistoryState extends State<SessionHistory> {
 
     try {
       final lastSession = _allSessions.last;
-      final lastDate = DateTime.parse(lastSession['created_at']);
+      final lastDate = DateTime.parse(lastSession['created_at']).toLocal();
 
       final moreSessions = await SessionService.instance.getUserSessions(
         limit: 50,
@@ -131,7 +131,7 @@ class _SessionHistoryState extends State<SessionHistory> {
       final location = (session['location'] as String).toLowerCase();
       final notes = (session['notes'] as String? ?? '').toLowerCase();
       final date =
-          DateTime.parse(session['created_at']).toString().toLowerCase();
+          DateTime.parse(session['created_at']).toLocal().toString().toLowerCase();
       final mood = (session['mood'] as String? ?? '').toLowerCase();
       final temperature =
           (session['temperature']?.toString() ?? '').toLowerCase();
@@ -149,14 +149,16 @@ class _SessionHistoryState extends State<SessionHistory> {
         filtered.sort(
           (a, b) => DateTime.parse(
             b['created_at'],
-          ).compareTo(DateTime.parse(a['created_at'])),
+          ).toLocal().compareTo(DateTime.parse(a['created_at']).toLocal()),
+        );
         );
         break;
       case 'oldest':
         filtered.sort(
           (a, b) => DateTime.parse(
             a['created_at'],
-          ).compareTo(DateTime.parse(b['created_at'])),
+          ).toLocal().compareTo(DateTime.parse(b['created_at']).toLocal()),
+        );
         );
         break;
       case 'duration':
@@ -298,7 +300,7 @@ class _SessionHistoryState extends State<SessionHistory> {
                     _buildDetailRow(
                       'Date',
                       _formatDetailDate(
-                        DateTime.parse(session['created_at']),
+                        DateTime.parse(session['created_at']).toLocal(),
                       ),
                     ),
                     _buildDetailRow(
