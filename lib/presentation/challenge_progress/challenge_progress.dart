@@ -362,6 +362,8 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
               targetValue: _challengeData?['target_value'] as int? ?? 0,
               challengeType:
                   _challengeData?['challenge_type'] as String? ?? 'consistency',
+              challengeTitle: _challengeData?['title'] as String? ?? '',
+              durationDays: _challengeData?['duration_days'] as int? ?? 0,
               daysRemaining: _calculateDaysRemaining(),
               dateJoined: _userChallengeData?['joined_at'] as String?,
             ),

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
+import '../utils/challenge_display_helper.dart';
 
 class StatsSectionWidget extends StatelessWidget {
   final double currentProgress;
   final int targetValue;
   final String challengeType;
+  final String challengeTitle;
+  final int durationDays;
   final String daysRemaining;
   final String? dateJoined;
 
@@ -15,6 +18,8 @@ class StatsSectionWidget extends StatelessWidget {
     required this.currentProgress,
     required this.targetValue,
     required this.challengeType,
+    required this.challengeTitle,
+    required this.durationDays,
     required this.daysRemaining,
     this.dateJoined,
   });
@@ -24,7 +29,14 @@ class StatsSectionWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final currentValue = (currentProgress * targetValue / 100).round();
+    // Get proper display metadata for this challenge
+    final displayMetadata = ChallengeDisplayHelper.getProgressDisplay(
+      challengeTitle: challengeTitle,
+      challengeType: challengeType,
+      targetValue: targetValue,
+      durationDays: durationDays,
+      currentProgress: currentProgress,
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 4.w),
@@ -43,10 +55,11 @@ class StatsSectionWidget extends StatelessWidget {
               Expanded(
                 child: _buildStatCard(
                   context,
-                  icon: 'trending_up',
+                  icon: displayMetadata.iconName,
                   label: 'Current / Goal',
-                  value: '$currentValue / $targetValue',
-                  subtitle: _getChallengeTypeLabel(),
+                  value: '${displayMetadata.currentText} / ${displayMetadata.goalText}',
+                  subtitle: displayMetadata.unitLabel,
+                  subsublabel: displayMetadata.subLabel,
                   color: colorScheme.primary,
                 ),
               ),
@@ -85,6 +98,7 @@ class StatsSectionWidget extends StatelessWidget {
     required String label,
     required String value,
     required String subtitle,
+    String? subsublabel,
     required Color color,
     bool isFullWidth = false,
   }) {
@@ -152,28 +166,26 @@ class StatsSectionWidget extends StatelessWidget {
           Text(
             subtitle,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          if (subsublabel != null) ...[
+            SizedBox(height: 0.3.h),
+            Text(
+              subsublabel,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                fontSize: 10.sp,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
-    );
-  }
-
-  String _getChallengeTypeLabel() {
-    switch (challengeType) {
-      case 'streak':
-        return 'Day streak';
-      case 'duration':
-        return 'Seconds';
-      case 'temperature':
-        return 'Temperature (°F)';
-      case 'consistency':
-        return 'Sessions';
-      default:
-        return 'Progress';
+    );   return 'Progress';
     }
   }
 
