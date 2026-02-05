@@ -26,13 +26,7 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
   final TextEditingController _locationController = TextEditingController();
 
   bool _isCelsius = false;
-  int _selectedMood = 2; // Default to Neutral
-
-  final List<Map<String, dynamic>> _moodOptions = [
-    {'emoji': '😰', 'label': 'Anxious', 'value': 1},
-    {'emoji': '😐', 'label': 'Neutral', 'value': 2},
-    {'emoji': '⚡', 'label': 'Energized', 'value': 3},
-  ];
+  double _selectedMood = 5.0; // Default to middle (5/10)
 
   @override
   void initState() {
@@ -104,7 +98,7 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
     widget.onSetupComplete(
       temperatureInFahrenheit,
       _locationController.text,
-      _selectedMood,
+      _selectedMood.round(), // Convert to int
       _isCelsius ? 'C' : 'F', // Pass selected unit
     );
   }
@@ -113,244 +107,289 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
-    return SlideTransition(
-      position: _slideAnimation,
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: 32 + MediaQuery.of(context).padding.bottom,
-        ),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          boxShadow: [
-            BoxShadow(
-              color: colorScheme.shadow.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title with close button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Session Setup',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: widget.onCancel,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.close,
-                      size: 20,
-                      color: Colors.grey[600],
-                    ),
-                  ),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.55,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return SlideTransition(
+          position: _slideAnimation,
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
                 ),
               ],
             ),
-            SizedBox(height: 1.h),
-            Text(
-              'Configure your cold plunge session',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            SizedBox(height: 4.h),
-
-            // Temperature input
-            Text(
-              'Water Temperature',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _temperatureController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.-]')),
+                // Fixed header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Session Setup',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 0.5.h),
+                          Text(
+                            'Configure your cold plunge session',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: widget.onCancel,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.close,
+                            size: 20,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ),
                     ],
-                    decoration: InputDecoration(
-                      hintText: 'Enter temperature',
-                      suffixIcon: Container(
-                        margin: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            GestureDetector(
-                              onTap: () => _toggleTemperatureUnit(true),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 2.w,
-                                  vertical: 1.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _isCelsius
-                                      ? colorScheme.primary
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '°C',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: _isCelsius
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => _toggleTemperatureUnit(false),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 2.w,
-                                  vertical: 1.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: !_isCelsius
-                                      ? colorScheme.primary
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '°F',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: !_isCelsius
-                                        ? colorScheme.onPrimary
-                                        : colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                   ),
                 ),
-              ],
-            ),
-            SizedBox(height: 3.h),
 
-            // Location input
-            Text(
-              'Location',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            TextFormField(
-              controller: _locationController,
-              decoration: const InputDecoration(
-                hintText: 'Enter location',
-              ),
-            ),
-            SizedBox(height: 3.h),
-
-            // Pre-plunge mood
-            Text(
-              'Pre-Plunge Mood',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 1.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: _moodOptions.map((mood) {
-                final isSelected = _selectedMood == mood['value'];
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedMood = mood['value']);
-                    HapticFeedback.lightImpact();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 3.w,
-                      vertical: 1.5.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? colorScheme.primary.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.outline.withValues(
-                                alpha: 0.3,
-                              ),
-                        width: isSelected ? 2 : 1,
-                      ),
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: EdgeInsets.only(
+                      left: 24,
+                      right: 24,
+                      bottom: 32 +
+                          MediaQuery.of(context).padding.bottom +
+                          keyboardHeight,
                     ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Temperature input
                         Text(
-                          mood['emoji'],
-                          style: TextStyle(fontSize: 20.sp),
+                          'Water Temperature',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        SizedBox(height: 0.5.h),
+                        SizedBox(height: 1.h),
+                        TextFormField(
+                          controller: _temperatureController,
+                          keyboardType: TextInputType.number,
+                          scrollPadding: const EdgeInsets.only(bottom: 150),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.-]')),
+                          ],
+                          decoration: InputDecoration(
+                            hintText: 'Enter temperature',
+                            suffixIcon: Container(
+                              margin: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color:
+                                    colorScheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _toggleTemperatureUnit(true),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 2.w,
+                                        vertical: 1.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _isCelsius
+                                            ? colorScheme.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '°C',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                          color: _isCelsius
+                                              ? colorScheme.onPrimary
+                                              : colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => _toggleTemperatureUnit(false),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 2.w,
+                                        vertical: 1.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: !_isCelsius
+                                            ? colorScheme.primary
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '°F',
+                                        style: theme.textTheme.labelMedium
+                                            ?.copyWith(
+                                          color: !_isCelsius
+                                              ? colorScheme.onPrimary
+                                              : colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 3.h),
+
+                        // Location input
                         Text(
-                          mood['label'],
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w400,
+                          'Location',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 1.h),
+                        TextFormField(
+                          controller: _locationController,
+                          scrollPadding: const EdgeInsets.only(bottom: 150),
+                          decoration: const InputDecoration(
+                            hintText: 'Enter location',
+                          ),
+                        ),
+                        SizedBox(height: 3.h),
+
+                        // Pre-plunge mood
+                        Text(
+                          'Pre-Plunge Mood',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 1.h),
+                        // Mood value display
+                        Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 4.w,
+                              vertical: 1.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${_selectedMood.round()}/10',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 1.h),
+                        // Slider
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: colorScheme.primary,
+                            inactiveTrackColor:
+                                colorScheme.primary.withValues(alpha: 0.2),
+                            thumbColor: colorScheme.primary,
+                            overlayColor:
+                                colorScheme.primary.withValues(alpha: 0.1),
+                            trackHeight: 4.0,
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 12.0,
+                            ),
+                            overlayShape: const RoundSliderOverlayShape(
+                              overlayRadius: 20.0,
+                            ),
+                          ),
+                          child: Slider(
+                            value: _selectedMood,
+                            min: 1,
+                            max: 10,
+                            divisions: 9,
+                            label: '${_selectedMood.round()}',
+                            onChanged: (value) {
+                              setState(() => _selectedMood = value);
+                              HapticFeedback.lightImpact();
+                            },
+                          ),
+                        ),
+                        // Low/High labels
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 2.w),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Low',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              Text(
+                                'High',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 4.h),
+
+                        // Full-width Start Session button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 70,
+                          child: ElevatedButton(
+                            onPressed: _handleSetupComplete,
+                            child: const Text('Start Session'),
                           ),
                         ),
                       ],
                     ),
                   ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
-            SizedBox(height: 4.h),
-
-            // Full-width Start Session button with increased height
-            SizedBox(
-              width: double.infinity,
-              height: 70,
-              child: ElevatedButton(
-                onPressed: _handleSetupComplete,
-                child: Text('Start Session'),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

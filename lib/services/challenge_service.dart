@@ -588,7 +588,6 @@ class ChallengeService {
       for (final userChallenge in activeChallenges) {
         final challenge = userChallenge['challenges'] as Map<String, dynamic>;
         final challengeTitle = challenge['title'] as String? ?? '';
-        final challengeType = challenge['challenge_type'] as String;
         final targetValue = challenge['target_value'] as int?;
         final durationDays = challenge['duration_days'] as int;
         final joinedAt = DateTime.parse(userChallenge['joined_at']).toLocal();
@@ -608,7 +607,6 @@ class ChallengeService {
         // print('   Sessions in window: ${sessions.length}');
 
         double progress = 0.0;
-        String debugMetric = '';
 
         // Route to correct calculation based on challenge title/type
         switch (challengeTitle) {
@@ -619,36 +617,23 @@ class ChallengeService {
             progress = targetValue != null && targetValue > 0
                 ? (count / targetValue * 100).clamp(0, 100)
                 : 0.0;
-            debugMetric = 'Sessions: $count/${targetValue ?? 0}';
             break;
 
           case 'Two-Minute Club':
-            // Single session ≥ 2 minutes (120 seconds)
+            // Single session 2 minutes (120 seconds)
             progress = _computeSingleSessionThresholdProgress(
               sessions: sessions,
               targetSeconds: targetValue ?? 120,
             );
-            final maxDuration = sessions.isEmpty
-                ? 0
-                : sessions
-                    .map((s) => s['duration'] as int? ?? 0)
-                    .reduce((a, b) => a > b ? a : b);
-            debugMetric =
-                'Max duration: ${maxDuration}s / ${targetValue ?? 120}s';
             break;
 
           case 'Ice Breaker':
-            // 10 sessions ≤ 12°C (53.6°F)
+            // 10 sessions < 12°C (53.6°F)
             progress = _computeTemperatureSessionCountProgress(
               sessions: sessions,
               targetCount: 10,
               tempThresholdF: 53.6,
             );
-            final qualCount = sessions
-                .where((s) =>
-                    ((s['temperature'] as num?)?.toDouble() ?? 999.0) <= 53.6)
-                .length;
-            debugMetric = 'Sessions ≤ 53.6°F: $qualCount/10';
             break;
 
           // INTERMEDIATE CHALLENGES
@@ -660,7 +645,6 @@ class ChallengeService {
             progress = targetValue != null && targetValue > 0
                 ? (streak / targetValue * 100).clamp(0, 100)
                 : 0.0;
-            debugMetric = 'Current streak: $streak/${targetValue ?? 0} days';
             break;
 
           case 'Weekend Warrior':
@@ -669,7 +653,6 @@ class ChallengeService {
               sessions: sessions,
               targetWeeks: 4,
             );
-            debugMetric = 'Weekend Warrior progress';
             break;
 
           case 'Monthly Milestone':
@@ -678,7 +661,6 @@ class ChallengeService {
             final streak =
                 _computeConsecutiveStreak(sessionDays, challengeTitle);
             progress = (streak / 14 * 100).clamp(0, 100);
-            debugMetric = 'Current streak: $streak/14 days';
             break;
 
           // ADVANCED CHALLENGES
@@ -688,24 +670,21 @@ class ChallengeService {
             final streak =
                 _computeConsecutiveStreak(sessionDays, challengeTitle);
             progress = (streak / 14 * 100).clamp(0, 100);
-            debugMetric = 'Current streak: $streak/14 days';
             break;
 
           case 'Extreme Cold Challenge':
-            // ≤ 50°F (10°C) for 14 consecutive days
+            // < 50°F (10°C) for 14 consecutive days
             progress = _computeTemperatureStreakProgress(
               sessions: sessions,
               targetDays: 14,
               tempThresholdF: 50.0,
             );
-            debugMetric = 'Temp streak progress';
             break;
 
           case 'Arctic Explorer – 30 Day Journey':
             // 30 sessions in 30 days
             final count = sessions.length;
             progress = (count / 30 * 100).clamp(0, 100);
-            debugMetric = 'Sessions: $count/30';
             break;
 
           default:
@@ -714,7 +693,6 @@ class ChallengeService {
             continue;
         }
 
-        // print('   $debugMetric');
         // print('   Progress: ${progress.toStringAsFixed(1)}%');
 
         // Update progress if changed

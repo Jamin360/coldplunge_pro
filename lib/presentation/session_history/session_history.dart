@@ -130,8 +130,10 @@ class _SessionHistoryState extends State<SessionHistory> {
 
       final location = (session['location'] as String).toLowerCase();
       final notes = (session['notes'] as String? ?? '').toLowerCase();
-      final date =
-          DateTime.parse(session['created_at']).toLocal().toString().toLowerCase();
+      final date = DateTime.parse(session['created_at'])
+          .toLocal()
+          .toString()
+          .toLowerCase();
       final mood = (session['mood'] as String? ?? '').toLowerCase();
       final temperature =
           (session['temperature']?.toString() ?? '').toLowerCase();
@@ -151,14 +153,12 @@ class _SessionHistoryState extends State<SessionHistory> {
             b['created_at'],
           ).toLocal().compareTo(DateTime.parse(a['created_at']).toLocal()),
         );
-        );
         break;
       case 'oldest':
         filtered.sort(
           (a, b) => DateTime.parse(
             a['created_at'],
           ).toLocal().compareTo(DateTime.parse(b['created_at']).toLocal()),
-        );
         );
         break;
       case 'duration':

@@ -1,4 +1,5 @@
 import './supabase_service.dart';
+import '../core/streak/streak_calculator.dart';
 
 class AnalyticsService {
   static final AnalyticsService _instance = AnalyticsService._internal();
@@ -49,6 +50,13 @@ class AnalyticsService {
           .gte('created_at', startDate.toIso8601String())
           .order('created_at', ascending: false);
 
+      // Get ALL sessions for accurate streak calculation (not period-limited)
+      final allSessionsResponse = await _supabase
+          .from('plunge_sessions')
+          .select('created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
       // Get weekly goals
       final weekStart = _getWeekStartDate(now);
       final weeklyGoalsResponse = await _supabase
@@ -61,6 +69,7 @@ class AnalyticsService {
       return {
         'profile': profileResponse,
         'sessions': sessionsResponse,
+        'allSessions': allSessionsResponse, // For streak calculation
         'weeklyGoal': weeklyGoalsResponse,
       };
     } catch (e) {
@@ -500,9 +509,23 @@ class AnalyticsService {
     // Get personal best duration from profile
     final personalBestDuration = profile['personal_best_duration'] ?? 0;
 
+    // Calculate current streak using shared calculator
+    // We need ALL sessions, not just the period-limited ones
+    // So we'll use the allSessions key if available, or return streak from profile
+    final allSessions = analyticsData['allSessions'] as List<dynamic>?;
+    int currentStreak;
+    if (allSessions != null && allSessions.isNotEmpty) {
+      final sessionMaps =
+          allSessions.map((s) => Map<String, dynamic>.from(s as Map)).toList();
+      currentStreak = StreakCalculator.calculateCurrentStreak(sessionMaps);
+    } else {
+      // Fallback to profile's streak_count if allSessions not available
+      currentStreak = profile['streak_count'] ?? 0;
+    }
+
     return {
       'totalSessions': totalSessions,
-      'currentStreak': 0, // Calculated separately with calculateCurrentStreak
+      'currentStreak': currentStreak,
       'avgDuration': avgDuration,
       'coldestTemp': coldestTemp,
       'weeklyGoal': weeklyGoal,
@@ -512,6 +535,7 @@ class AnalyticsService {
 
   /// Calculate current streak by checking consecutive days with sessions
   /// Returns the number of consecutive days with at least one session
+  /// DEPRECATED: Use StreakCalculator.calculateCurrentStreak instead
   Future<int> calculateCurrentStreak() async {
     try {
       final userId = _supabase.auth.currentUser?.id;
@@ -526,62 +550,10 @@ class AnalyticsService {
 
       if (response.isEmpty) return 0;
 
-      // Extract unique dates (only the date part, not time)
-      final sessionDates = <DateTime>{};
-      for (final session in response) {
-        // Parse UTC timestamp and convert to local time
-        final createdAt =
-            DateTime.parse(session['created_at'] as String).toLocal();
-        final dateOnly = DateTime(
-          createdAt.year,
-          createdAt.month,
-          createdAt.day,
-        );
-        sessionDates.add(dateOnly);
-      }
-
-      // Sort dates in descending order
-      final sortedDates = sessionDates.toList()..sort((a, b) => b.compareTo(a));
-
-      // Start counting from today
-      final today = DateTime.now();
-      final todayDate = DateTime(today.year, today.month, today.day);
-      final yesterday = todayDate.subtract(const Duration(days: 1));
-
-      int streak = 0;
-      DateTime currentDate;
-
-      // Determine starting point
-      if (sortedDates.first.isAtSameMomentAs(todayDate)) {
-        // Session exists today, start from today
-        currentDate = todayDate;
-        streak = 1;
-      } else if (sortedDates.first.isAtSameMomentAs(yesterday)) {
-        // No session today but one yesterday, start from yesterday
-        currentDate = yesterday;
-        streak = 1;
-      } else {
-        // No recent sessions, streak is 0
-        return 0;
-      }
-
-      // Count backwards checking for consecutive days
-      int dateIndex = 1; // Start from second date since we counted the first
-      while (dateIndex < sortedDates.length) {
-        final previousDate = currentDate.subtract(const Duration(days: 1));
-
-        if (sortedDates[dateIndex].isAtSameMomentAs(previousDate)) {
-          // Found session on consecutive day
-          streak++;
-          currentDate = previousDate;
-          dateIndex++;
-        } else {
-          // Gap found, streak ends
-          break;
-        }
-      }
-
-      return streak;
+      // Use shared streak calculator
+      final sessionMaps =
+          response.map((s) => Map<String, dynamic>.from(s as Map)).toList();
+      return StreakCalculator.calculateCurrentStreak(sessionMaps);
     } catch (e) {
       print('Error calculating streak: $e');
       return 0;

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../core/feature_flags.dart';
 import '../../services/session_service.dart';
 import '../../services/challenge_service.dart';
 import './widgets/audio_controls_widget.dart';
@@ -36,14 +37,12 @@ class _PlungeTimerState extends State<PlungeTimer>
   double _temperature = 15.0;
   String _tempUnit = 'F'; // 'C' or 'F' - unit user selected in Session Setup
   String _location = 'Home Ice Bath';
-  int _preMood = 2; // Default to Neutral
-  int _postMood = 2; // Default to Neutral
+  int _preMood = 5; // Default to middle (5/10)
+  int _postMood = 5; // Default to middle (5/10)
   String _sessionNotes = '';
   String? _breathingTechnique;
 
   // UI state
-  bool _showSetup = false;
-  bool _showCompletion = false;
   bool _showCompletionWidget = false;
   Duration _completedDuration = Duration.zero;
 
@@ -209,6 +208,7 @@ class _PlungeTimerState extends State<PlungeTimer>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => SessionSetupWidget(
@@ -221,10 +221,6 @@ class _PlungeTimerState extends State<PlungeTimer>
     );
   }
 
-  void _hideSessionSetup() {
-    // No longer needed with showModalBottomSheet
-  }
-
   void _handleSetupComplete(
       double temperature, String location, int mood, String tempUnit) {
     // Temperature is already in Fahrenheit from session_setup_widget conversion
@@ -233,7 +229,6 @@ class _PlungeTimerState extends State<PlungeTimer>
       _tempUnit = tempUnit; // Store selected unit for display
       _location = location;
       _preMood = mood;
-      _showSetup = false;
     });
 
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -336,11 +331,14 @@ class _PlungeTimerState extends State<PlungeTimer>
           .timeout(const Duration(seconds: 8));
       print('💾 DEBUG: Session saved successfully');
 
-      // Update challenge progress - this will trigger detection and emit events
+      // Update challenge progress only if challenges feature is enabled
+      // This will trigger detection and emit events
       // The stream listener in main.dart will show the popup
-      print('🎯 DEBUG: Calling updateUserChallengeProgress()...');
-      await ChallengeService.instance.updateUserChallengeProgress();
-      print('🎯 DEBUG: updateUserChallengeProgress() completed');
+      if (kEnableChallenges) {
+        print('🎯 DEBUG: Calling updateUserChallengeProgress()...');
+        await ChallengeService.instance.updateUserChallengeProgress();
+        print('🎯 DEBUG: updateUserChallengeProgress() completed');
+      }
 
       if (mounted) {
         // Show success message
@@ -354,17 +352,23 @@ class _PlungeTimerState extends State<PlungeTimer>
     }
   }
 
-  // Cached mood conversion for better performance
+  // Convert 1-10 mood scale to database enum values
+  // Maps numeric mood to closest semantic mood state
   String _getMoodString(int mood) {
-    switch (mood) {
-      case 1:
-        return 'anxious';
-      case 2:
-        return 'neutral';
-      case 3:
-        return 'energized';
-      default:
-        return 'neutral';
+    // Map 1-10 scale to mood enum values
+    // 1-3: Low moods (stressed, anxious, tired)
+    // 4-6: Neutral/calm moods
+    // 7-10: High moods (energized, focused, euphoric)
+    if (mood <= 2) {
+      return 'stressed';
+    } else if (mood <= 4) {
+      return 'anxious';
+    } else if (mood <= 6) {
+      return 'neutral';
+    } else if (mood <= 8) {
+      return 'energized';
+    } else {
+      return 'euphoric';
     }
   }
 
@@ -376,48 +380,6 @@ class _PlungeTimerState extends State<PlungeTimer>
       'energized',
     ];
     return validMoods.contains(mood);
-  }
-
-  // Ultra-fast optimistic save with background processing
-  Future<void> _saveSessionOptimistically() async {
-    try {
-      // Convert mood integers to mood enum strings (cached for performance)
-      final preMoodString = _getMoodString(_preMood);
-      final postMoodString = _getMoodString(_postMood);
-
-      // Validate mood strings before sending to database
-      if (!_validateMoodString(preMoodString) ||
-          !_validateMoodString(postMoodString)) {
-        print(
-          'Invalid mood values detected: pre=$preMoodString, post=$postMoodString',
-        );
-        return;
-      }
-
-      // CRITICAL: Temperature is stored in Fahrenheit in database
-      // _temperature already contains Fahrenheit value from session setup conversion
-      final sessionData = {
-        'location': _location,
-        'duration': _sessionDuration.inSeconds,
-        'temperature': _temperature.round(), // Already Fahrenheit
-        'temp_unit': _tempUnit, // Store unit user selected for display later
-        'pre_mood': preMoodString,
-        'post_mood': postMoodString,
-        'notes': _sessionNotes.isEmpty ? null : _sessionNotes,
-        'breathing_technique': _breathingTechnique,
-      };
-
-      // Add debug logging for temperature storage
-      print(
-        'Saving session with temperature: ${_temperature.round()}°F',
-      );
-
-      // Non-blocking background save - don't await
-      SessionService.instance.saveSessionInBackground(sessionData);
-    } catch (error) {
-      // Silent fail for optimistic pattern - could implement retry queue
-      print('Optimistic save failed: $error');
-    }
   }
 
   void _showErrorMessage(dynamic error) {

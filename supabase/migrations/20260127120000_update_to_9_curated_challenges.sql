@@ -73,7 +73,7 @@ INSERT INTO public.challenges (
     is_active
 ) VALUES (
     'Ice Breaker',
-    'Complete 10 cold plunge sessions at or below 12°C (54°F). Experience the power of extreme cold.',
+    'Complete 10 cold plunge sessions below 12°C (54°F). Experience the power of extreme cold.',
     'temperature', -- session_count + temperature_threshold
     12, -- 12°C threshold
     30, -- 30 days to complete
@@ -196,7 +196,7 @@ INSERT INTO public.challenges (
     is_active
 ) VALUES (
     'Extreme Cold Challenge',
-    'Complete at least one plunge per day at or below 50°F (10°C) for 14 consecutive days. Push your limits.',
+    'Complete at least one plunge per day below 50°F (10°C) for 14 consecutive days. Push your limits.',
     'temperature', -- temperature + streak (special handling needed)
     10, -- 10°C (50°F) threshold
     14, -- 14 days

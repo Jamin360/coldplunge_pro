@@ -18,7 +18,8 @@ void main() {
         expect(metadata.unitLabel, 'Days');
         expect(metadata.subLabel, contains('50°F'));
         expect(metadata.subLabel, contains('10°C'));
-        expect(metadata.subLabel, contains('≤'));
+        expect(metadata.subLabel, contains('<'));
+        expect(metadata.subLabel, isNot(contains('≤'))); // Must NOT contain ≤
       });
 
       test('displays days with temperature condition at 50% progress', () {
@@ -33,7 +34,7 @@ void main() {
         expect(metadata.currentText, '7');
         expect(metadata.goalText, '14');
         expect(metadata.unitLabel, 'Days');
-        expect(metadata.subLabel, '≤ 50°F (10°C)');
+        expect(metadata.subLabel, '< 50°F (10°C)');
       });
 
       test('displays days with temperature condition at 100% progress', () {
@@ -48,7 +49,7 @@ void main() {
         expect(metadata.currentText, '14');
         expect(metadata.goalText, '14');
         expect(metadata.unitLabel, 'Days');
-        expect(metadata.subLabel, '≤ 50°F (10°C)');
+        expect(metadata.subLabel, '< 50°F (10°C)');
       });
     });
 
@@ -132,7 +133,7 @@ void main() {
           currentProgress: 0.0,
         );
 
-        expect(metadata.subLabel, '≤ 50°F (10°C)');
+        expect(metadata.subLabel, '< 50°F (10°C)');
       });
 
       test('converts 12°C to 54°F correctly', () {
@@ -146,6 +147,26 @@ void main() {
 
         expect(metadata.subLabel, contains('54°F'));
         expect(metadata.subLabel, contains('12°C'));
+      });
+
+      test('formatTemperatureCondition always uses strict less-than symbol',
+          () {
+        final condition10C =
+            ChallengeDisplayHelper.formatTemperatureCondition(10);
+        final condition12C =
+            ChallengeDisplayHelper.formatTemperatureCondition(12);
+        final condition0C =
+            ChallengeDisplayHelper.formatTemperatureCondition(0);
+
+        // Must use "<" (strict less-than)
+        expect(condition10C, '< 50°F (10°C)');
+        expect(condition12C, '< 54°F (12°C)');
+        expect(condition0C, '< 32°F (0°C)');
+
+        // Must NOT use "≤" (less-than-or-equal)
+        expect(condition10C, isNot(contains('≤')));
+        expect(condition12C, isNot(contains('≤')));
+        expect(condition0C, isNot(contains('≤')));
       });
     });
   });

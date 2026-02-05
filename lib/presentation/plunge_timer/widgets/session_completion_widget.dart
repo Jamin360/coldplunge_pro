@@ -30,13 +30,7 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
 
   final TextEditingController _notesController = TextEditingController();
   bool _isSaving = false;
-  int _selectedMood = 2; // Default to Neutral
-
-  final List<Map<String, dynamic>> _moodOptions = [
-    {'emoji': '😰', 'label': 'Anxious', 'value': 1},
-    {'emoji': '😐', 'label': 'Neutral', 'value': 2},
-    {'emoji': '⚡', 'label': 'Energized', 'value': 3},
-  ];
+  double _selectedMood = 5.0; // Default to middle (5/10)
 
   @override
   void initState() {
@@ -73,7 +67,7 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
 
   void _handleSaveSession() {
     HapticFeedback.mediumImpact();
-    widget.onSaveSession(_selectedMood, _notesController.text);
+    widget.onSaveSession(_selectedMood.round(), _notesController.text);
   }
 
   @override
@@ -200,56 +194,75 @@ class _SessionCompletionWidgetState extends State<SessionCompletionWidget>
                 ),
               ),
               SizedBox(height: 1.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: _moodOptions.map((mood) {
-                  final isSelected = _selectedMood == mood['value'];
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedMood = mood['value']);
-                      HapticFeedback.lightImpact();
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 3.w,
-                        vertical: 1.5.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? colorScheme.primary.withValues(alpha: 0.1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? colorScheme.primary
-                              : colorScheme.outline.withValues(alpha: 0.3),
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            mood['emoji'],
-                            style: TextStyle(fontSize: 20.sp),
-                          ),
-                          SizedBox(height: 0.5.h),
-                          Text(
-                            mood['label'],
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: isSelected
-                                  ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
-                          ),
-                        ],
+              // Mood value display
+              Center(
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 4.w,
+                    vertical: 1.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_selectedMood.round()}/10',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 1.h),
+              // Slider
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: colorScheme.primary,
+                  inactiveTrackColor:
+                      colorScheme.primary.withValues(alpha: 0.2),
+                  thumbColor: colorScheme.primary,
+                  overlayColor: colorScheme.primary.withValues(alpha: 0.1),
+                  trackHeight: 4.0,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 12.0,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 20.0,
+                  ),
+                ),
+                child: Slider(
+                  value: _selectedMood,
+                  min: 1,
+                  max: 10,
+                  divisions: 9,
+                  label: '${_selectedMood.round()}',
+                  onChanged: (value) {
+                    setState(() => _selectedMood = value);
+                    HapticFeedback.lightImpact();
+                  },
+                ),
+              ),
+              // Low/High labels
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 2.w),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Low',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
-                  );
-                }).toList(),
+                    Text(
+                      'High',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 4.h),
 

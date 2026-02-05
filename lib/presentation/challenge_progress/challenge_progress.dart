@@ -644,15 +644,21 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
 
   void _showLeaveConfirmation() {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        contentPadding: const EdgeInsets.all(24),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         title: Text(
-          'Leave Challenge?',
+          'Leave Challenge',
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
+            color: Colors.black87,
           ),
         ),
         content: Column(
@@ -660,29 +666,35 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Are you sure you want to leave this challenge?',
-              style: theme.textTheme.bodyMedium,
+              'Leaving will reset your progress for this challenge.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.black87,
+                height: 1.5,
+              ),
             ),
-            SizedBox(height: 2.h),
+            const SizedBox(height: 16),
             Container(
-              padding: EdgeInsets.all(2.w),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: colorScheme.errorContainer,
+                color: const Color(0xFFFFF3E0).withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   CustomIconWidget(
                     iconName: 'warning',
-                    size: 20,
-                    color: colorScheme.error,
+                    size: 16,
+                    color: const Color(0xFFF57C00),
                   ),
-                  SizedBox(width: 2.w),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Your progress will be lost and cannot be recovered.',
+                      'You can rejoin later, but progress will start over.',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onErrorContainer,
+                        color: const Color(0xFF5D4037),
+                        fontSize: 12,
+                        height: 1.4,
                       ),
                     ),
                   ),
@@ -692,20 +704,53 @@ class _ChallengeProgressState extends State<ChallengeProgress> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _leaveChallenge();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.error,
-              foregroundColor: colorScheme.onError,
-            ),
-            child: const Text('Leave Challenge'),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.black87,
+                  side: BorderSide(color: Colors.grey.shade300),
+                  backgroundColor: Colors.grey.shade50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _leaveChallenge();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD32F2F),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'Leave Challenge',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

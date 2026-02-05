@@ -252,7 +252,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab>
                       children: [
                         Expanded(
                           child: QuickStatsCardWidget(
-                            title: 'This Week',
+                            title: 'Last 7 Days',
                             value: '${userStats['week_sessions'] ?? 0}',
                             subtitle: 'Sessions completed',
                             iconName: 'calendar_today',
@@ -358,7 +358,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab>
                                 padding: EdgeInsets.only(bottom: 2.h),
                                 child: RecentSessionCardWidget(
                                   session: session,
-                                  onTap: () {
+                                  onView: () {
                                     // View session details
                                   },
                                   onDelete: null, // Disable delete from home

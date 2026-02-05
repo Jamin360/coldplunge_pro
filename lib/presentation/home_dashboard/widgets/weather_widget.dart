@@ -469,40 +469,4 @@ class _WeatherWidgetState extends State<WeatherWidget>
         return AppTheme.primaryLight;
     }
   }
-
-  String _getPlungeRecommendation(int temperature) {
-    if (temperature <= 5) {
-      return 'Perfect for cold plunge! Extreme cold conditions.';
-    } else if (temperature <= 15) {
-      return 'Great conditions for outdoor plunge session.';
-    } else if (temperature <= 25) {
-      return 'Good weather for cold exposure therapy.';
-    } else {
-      return 'Consider indoor plunge or early morning session.';
-    }
-  }
-
-  Color _getPlungeRecommendationColor(int temperature) {
-    if (temperature <= 5) {
-      return AppTheme.primaryLight;
-    } else if (temperature <= 15) {
-      return AppTheme.successLight;
-    } else if (temperature <= 25) {
-      return AppTheme.warningLight;
-    } else {
-      return AppTheme.errorLight;
-    }
-  }
-
-  String _getPlungeRecommendationIcon(int temperature) {
-    if (temperature <= 5) {
-      return 'ac_unit';
-    } else if (temperature <= 15) {
-      return 'check_circle';
-    } else if (temperature <= 25) {
-      return 'info';
-    } else {
-      return 'warning';
-    }
-  }
 }

@@ -77,9 +77,9 @@ class ChallengeCardWidget extends StatelessWidget {
           final minutes = (targetValue / 60).floor();
           final seconds = targetValue % 60;
           if (seconds == 0) {
-            return 'Single plunge ≥ $minutes min';
+            return 'Single plunge $minutes min';
           } else {
-            return 'Single plunge ≥ $minutes:${seconds.toString().padLeft(2, '0')} min';
+            return 'Single plunge $minutes min ${seconds}s';
           }
         }
         return 'Duration challenge';
@@ -96,7 +96,7 @@ class ChallengeCardWidget extends StatelessWidget {
       case 'temperature':
         // Temperature threshold challenge
         if (targetValue != null) {
-          return 'Plunge ≤ ${targetValue}°F';
+          return 'Plunge < ${targetValue}°F';
         }
         return 'Temperature challenge';
 

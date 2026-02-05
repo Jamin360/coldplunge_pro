@@ -5,6 +5,8 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 import '../../services/session_service.dart';
+import '../../services/dashboard_repository.dart';
+import '../../services/persistent_cache_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_bottom_bar.dart';
 import './widgets/quick_stats_card_widget.dart';
@@ -21,7 +23,9 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class _HomeDashboardState extends State<HomeDashboard>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       GlobalKey<RefreshIndicatorState>();
   bool _isLoading = false;
@@ -33,9 +37,15 @@ class _HomeDashboardState extends State<HomeDashboard>
   int _currentStreak = 0;
   bool _hasPlungedToday = false;
 
+  late final DashboardRepository _dashboardRepository;
+  late final PersistentCacheService _persistentCacheService;
+
   @override
   void initState() {
     super.initState();
+    _persistentCacheService = PersistentCacheService();
+    _dashboardRepository =
+        DashboardRepository(persistentCacheService: _persistentCacheService);
     _loadDashboardData();
   }
 
@@ -46,7 +56,6 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   Future<void> _loadDashboardData() async {
     if (!AuthService.instance.isAuthenticated) {
-      // User not authenticated, redirect to login
       Navigator.pushReplacementNamed(context, '/login');
       return;
     }
@@ -54,24 +63,36 @@ class _HomeDashboardState extends State<HomeDashboard>
     setState(() => _isLoading = true);
 
     try {
-      // Load all dashboard data in parallel (remove community highlights fetch)
-      final results = await Future.wait([
-        SessionService.instance.getRecentSessions(),
-        SessionService.instance.getWeeklyProgress(),
-        AuthService.instance.getUserStats(),
-        AuthService.instance.hasSessionToday(),
-      ]);
+      final dashboardData = await _dashboardRepository.getDashboardData(
+        key: 'main',
+        fetcher: () async {
+          final results = await Future.wait([
+            SessionService.instance.getRecentSessions(),
+            SessionService.instance.getWeeklyProgress(),
+            AuthService.instance.getUserStats(),
+            AuthService.instance.hasSessionToday(),
+          ]);
+          return {
+            'recentSessions': results[0],
+            'weeklyData': results[1],
+            'userStats': results[2],
+            'hasPlungedToday': results[3],
+          };
+        },
+      );
 
       setState(() {
-        _recentSessions = results[0] as List<Map<String, dynamic>>;
-        _weeklyData = results[1] as List<Map<String, dynamic>>;
-        _userStats = results[2] as Map<String, dynamic>;
-        _hasPlungedToday = results[3] as bool;
+        _recentSessions = List<Map<String, dynamic>>.from(
+            dashboardData['recentSessions'] ?? []);
+        _weeklyData =
+            List<Map<String, dynamic>>.from(dashboardData['weeklyData'] ?? []);
+        _userStats =
+            Map<String, dynamic>.from(dashboardData['userStats'] ?? {});
+        _hasPlungedToday = dashboardData['hasPlungedToday'] ?? false;
         _currentStreak = _userStats['streak_count'] ?? 0;
       });
     } catch (error) {
       print('Dashboard data load error: $error');
-      // Show error but don't break the UI
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -324,6 +345,7 @@ class _HomeDashboardState extends State<HomeDashboard>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -441,7 +463,7 @@ class _HomeDashboardState extends State<HomeDashboard>
                         children: [
                           Expanded(
                             child: QuickStatsCardWidget(
-                              title: 'This Week',
+                              title: 'Last 7 Days',
                               value: '${_userStats['week_sessions'] ?? 0}',
                               subtitle: 'Sessions completed',
                               iconName: 'calendar_today',

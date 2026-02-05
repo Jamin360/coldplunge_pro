@@ -11,6 +11,8 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../core/utils/chart_utils.dart';
 import '../../services/analytics_service.dart';
+import '../../services/analytics_repository.dart';
+import '../../services/persistent_cache_service.dart';
 import './widgets/chart_container_widget.dart';
 import './widgets/metrics_card_widget.dart';
 import './widgets/progress_goal_widget.dart';
@@ -22,11 +24,16 @@ class PersonalAnalytics extends StatefulWidget {
   State<PersonalAnalytics> createState() => _PersonalAnalyticsState();
 }
 
-class _PersonalAnalyticsState extends State<PersonalAnalytics> {
+class _PersonalAnalyticsState extends State<PersonalAnalytics>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       GlobalKey<RefreshIndicatorState>();
   String _selectedPeriod = 'Month';
   final AnalyticsService _analyticsService = AnalyticsService();
+  late final AnalyticsRepository _analyticsRepository;
+  late final PersistentCacheService _persistentCacheService;
   bool _isInitialized = false;
 
   // Real data from Supabase
@@ -79,6 +86,9 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
   @override
   void initState() {
     super.initState();
+    _persistentCacheService = PersistentCacheService();
+    _analyticsRepository =
+        AnalyticsRepository(persistentCacheService: _persistentCacheService);
     _loadAnalyticsData();
   }
 
@@ -101,26 +111,37 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
     });
 
     try {
-      // Load main analytics data
-      final analyticsData = await _analyticsService.getUserAnalytics(
-        _selectedPeriod,
+      final analyticsData = await _analyticsRepository.getAnalyticsData(
+        key: 'main',
+        fetcher: () async {
+          final analytics =
+              await _analyticsService.getUserAnalytics(_selectedPeriod);
+          final keyMetrics = _analyticsService.calculateKeyMetrics(analytics);
+          final frequencyData =
+              await _analyticsService.getSessionFrequencyData(_selectedPeriod);
+          final temperatureData =
+              await _analyticsService.getTemperatureProgressData();
+          await _analyticsService.getMoodAnalytics();
+          return {
+            'analyticsData': analytics,
+            'keyMetrics': keyMetrics,
+            'frequencyData': frequencyData,
+            'temperatureData': temperatureData,
+          };
+        },
       );
-      final keyMetrics = _analyticsService.calculateKeyMetrics(analyticsData);
-
-      // Load chart data
-      final frequencyData = await _analyticsService.getSessionFrequencyData(
-        _selectedPeriod,
-      );
-      final temperatureData =
-          await _analyticsService.getTemperatureProgressData();
-      await _analyticsService.getMoodAnalytics();
 
       setState(() {
-        _analyticsData = analyticsData;
-        _sessionFrequencyData = frequencyData;
-        _temperatureProgressData = temperatureData;
-        _keyMetrics = _buildKeyMetricsFromData(keyMetrics);
-        _updateAchievements(keyMetrics);
+        _analyticsData =
+            Map<String, dynamic>.from(analyticsData['analyticsData'] ?? {});
+        _keyMetrics = _buildKeyMetricsFromData(
+            Map<String, dynamic>.from(analyticsData['keyMetrics'] ?? {}));
+        _sessionFrequencyData = List<Map<String, dynamic>>.from(
+            analyticsData['frequencyData'] ?? []);
+        _temperatureProgressData = List<Map<String, dynamic>>.from(
+            analyticsData['temperatureData'] ?? []);
+        _updateAchievements(
+            Map<String, dynamic>.from(analyticsData['keyMetrics'] ?? {}));
         _isLoading = false;
       });
     } catch (e) {
@@ -278,6 +299,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -436,7 +458,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
                           ChartContainerWidget(
                             title: 'Session Frequency',
                             subtitle: _selectedPeriod == 'Week'
-                                ? 'Sessions per day this week'
+                                ? 'Sessions per day (last 7 days)'
                                 : 'Sessions per week',
                             chart: Semantics(
                               label: "Session Frequency Bar Chart",
@@ -1375,66 +1397,5 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics> {
       final minutes = (seconds % 3600) ~/ 60;
       return '${hours}h ${minutes}m';
     }
-  }
-
-  void _showComingSoonDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          contentPadding: EdgeInsets.all(6.w),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.info_outline, size: 12.w, color: colorScheme.primary),
-              SizedBox(height: 4.w),
-              Text(
-                'Coming Soon!',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 2.w),
-              Text(
-                'Export feature coming soon!',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 4.w),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: colorScheme.onPrimary,
-                    padding: EdgeInsets.symmetric(vertical: 3.w),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    'Got it',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 }

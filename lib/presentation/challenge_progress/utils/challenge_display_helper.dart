@@ -54,17 +54,12 @@ class ChallengeDisplayHelper {
       case 'duration':
         // Single session duration threshold
         final targetSeconds = targetValue;
-        final targetMinutes = (targetSeconds / 60).floor();
-        final targetSecondsRemainder = targetSeconds % 60;
-        final targetDisplay = targetSecondsRemainder > 0
-            ? '${targetMinutes}m ${targetSecondsRemainder}s'
-            : '${targetMinutes}m';
 
         return ChallengeDisplayMetadata(
           currentText: '$currentValue',
           goalText: '$targetSeconds',
           unitLabel: 'Seconds',
-          subLabel: 'Single session ≥ $targetDisplay',
+          subLabel: formatDurationCondition(targetSeconds),
           iconName: 'trending_up',
         );
 
@@ -107,15 +102,11 @@ class ChallengeDisplayHelper {
   }) {
     final currentDays = (currentProgress * durationDays / 100).round();
 
-    // Convert temperature to both units for display
-    final tempF = _celsiusToFahrenheit(tempThresholdC);
-    final tempCondition = '≤ ${tempF}°F (${tempThresholdC}°C)';
-
     return ChallengeDisplayMetadata(
       currentText: '$currentDays',
       goalText: '$durationDays',
       unitLabel: 'Days',
-      subLabel: tempCondition,
+      subLabel: formatTemperatureCondition(tempThresholdC),
       iconName: 'trending_up',
     );
   }
@@ -126,16 +117,33 @@ class ChallengeDisplayHelper {
     required int targetValue,
   }) {
     // For challenges like Ice Breaker: count sessions at or below temperature
-    final tempF = _celsiusToFahrenheit(targetValue);
-    final tempCondition = '≤ ${tempF}°F (${targetValue}°C)';
-
     return ChallengeDisplayMetadata(
       currentText: '$currentValue',
       goalText: '10', // Ice Breaker requires 10 sessions
       unitLabel: 'Sessions',
-      subLabel: tempCondition,
+      subLabel: formatTemperatureCondition(targetValue),
       iconName: 'trending_up',
     );
+  }
+
+  /// Format temperature condition for display (always uses strict less-than)
+  /// Returns format: "< 50°F (10°C)"
+  static String formatTemperatureCondition(int tempCelsius) {
+    final tempF = _celsiusToFahrenheit(tempCelsius);
+    return '< ${tempF}°F (${tempCelsius}°C)';
+  }
+
+  /// Format duration condition for display (clean, human-readable)
+  /// Returns format: "Single session 60 min" or "Single session 10 min"
+  static String formatDurationCondition(int targetSeconds) {
+    final targetMinutes = (targetSeconds / 60).floor();
+    final targetSecondsRemainder = targetSeconds % 60;
+
+    if (targetSecondsRemainder > 0) {
+      return 'Single session $targetMinutes min ${targetSecondsRemainder}s';
+    } else {
+      return 'Single session $targetMinutes min';
+    }
   }
 
   /// Convert Celsius to Fahrenheit

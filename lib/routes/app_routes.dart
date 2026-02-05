@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/feature_flags.dart';
 import '../presentation/splash_screen/splash_screen.dart';
 import '../presentation/auth/login_screen.dart';
 import '../presentation/auth/signup_screen.dart';
@@ -35,9 +36,13 @@ class AppRoutes {
       homeDashboard: (context) => const HomeDashboard(),
       plungeTimer: (context) => const PlungeTimer(),
       personalAnalytics: (context) => const PersonalAnalytics(),
-      challenges: (context) => const Challenges(),
+      // Redirect to home if challenges are disabled
+      challenges: (context) =>
+          kEnableChallenges ? const Challenges() : const HomeDashboard(),
       sessionHistory: (context) => const SessionHistory(),
-      challengeProgress: (context) => const ChallengeProgress(),
+      // Redirect to home if challenges are disabled
+      challengeProgress: (context) =>
+          kEnableChallenges ? const ChallengeProgress() : const HomeDashboard(),
       settings: (context) => const SettingsPage(),
     };
   }

@@ -1,9 +1,7 @@
 import 'dart:math' show cos, sin, pi;
 import 'package:flutter/material.dart';
-import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../../widgets/custom_icon_widget.dart';
 
 /// Widget designed to be captured as a shareable image
 class ShareImageWidget extends StatelessWidget {
@@ -101,10 +99,10 @@ class ShareImageWidget extends StatelessWidget {
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 3,
                         ),
                       ),
@@ -135,7 +133,7 @@ class ShareImageWidget extends StatelessWidget {
                       width: 140,
                       height: 140,
                       decoration: BoxDecoration(
-                        color: _getIconColor().withOpacity(0.25),
+                        color: _getIconColor().withValues(alpha: 0.25),
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: _getIconColor(),
@@ -173,7 +171,8 @@ class ShareImageWidget extends StatelessWidget {
                           child: CircularProgressIndicator(
                             value: progress / 100,
                             strokeWidth: 20,
-                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.2),
                             valueColor: AlwaysStoppedAnimation<Color>(
                               AppTheme.secondaryLight,
                             ),
@@ -232,7 +231,7 @@ class ShareImageWidget extends StatelessWidget {
                         vertical: 15,
                       ),
                       decoration: BoxDecoration(
-                        color: _getIconColor().withOpacity(0.3),
+                        color: _getIconColor().withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
                           color: _getIconColor(),
@@ -271,10 +270,10 @@ class ShareImageWidget extends StatelessWidget {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(25),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 1.5,
                         ),
                       ),
@@ -302,10 +301,10 @@ class ShareImageWidget extends StatelessWidget {
       width: 260,
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 2,
         ),
       ),

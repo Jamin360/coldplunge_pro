@@ -57,7 +57,8 @@ class StatsSectionWidget extends StatelessWidget {
                   context,
                   icon: displayMetadata.iconName,
                   label: 'Current / Goal',
-                  value: '${displayMetadata.currentText} / ${displayMetadata.goalText}',
+                  value:
+                      '${displayMetadata.currentText} / ${displayMetadata.goalText}',
                   subtitle: displayMetadata.unitLabel,
                   subsublabel: displayMetadata.subLabel,
                   color: colorScheme.primary,
@@ -185,8 +186,7 @@ class StatsSectionWidget extends StatelessWidget {
           ],
         ],
       ),
-    );   return 'Progress';
-    }
+    );
   }
 
   String _formatDate(String dateStr) {

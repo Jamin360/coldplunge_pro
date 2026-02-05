@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/app_export.dart';
@@ -212,7 +211,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -244,20 +242,6 @@ class _SettingsPageState extends State<SettingsPage> {
                           value: _settingsService.email,
                           icon: Icons.email_outlined,
                         ),
-                      ],
-                    ),
-
-                    SizedBox(height: 2.h),
-
-                    // Preferences Section
-                    _buildSectionCard(
-                      title: 'Preferences',
-                      children: [
-                        _buildTemperatureUnitRow(),
-                        const Divider(height: 1),
-                        _buildVolumeSliderRow(),
-                        const Divider(height: 1),
-                        _buildHapticsSwitchRow(),
                       ],
                     ),
 
@@ -497,148 +481,6 @@ class _SettingsPageState extends State<SettingsPage> {
             Icon(Icons.chevron_right, size: 24, color: const Color(0xFF94A3B8)),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTemperatureUnitRow() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
-      child: Row(
-        children: [
-          Icon(
-            Icons.thermostat_outlined,
-            size: 24,
-            color: const Color(0xFF1E3A5A),
-          ),
-          SizedBox(width: 3.w),
-          Expanded(
-            child: Text(
-              'Temperature Unit',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTemperatureUnitButton('°F', 'F'),
-                _buildTemperatureUnitButton('°C', 'C'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTemperatureUnitButton(String label, String value) {
-    final isSelected = _settingsService.temperatureUnit == value;
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        _settingsService.updateTemperatureUnit(value);
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 3.w, vertical: 1.h),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1E3A5A) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isSelected ? Colors.white : const Color(0xFF64748B),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVolumeSliderRow() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.volume_up_outlined,
-                size: 24,
-                color: const Color(0xFF1E3A5A),
-              ),
-              SizedBox(width: 3.w),
-              Expanded(
-                child: Text(
-                  'Soundscapes Volume',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ),
-              Text(
-                '${_settingsService.soundscapeVolume}%',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF64748B),
-                    ),
-              ),
-            ],
-          ),
-          SizedBox(height: 1.h),
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: const Color(0xFF1E3A5A),
-              inactiveTrackColor: const Color(0xFFE2E8F0),
-              thumbColor: const Color(0xFF1E3A5A),
-              overlayColor: const Color(0xFF1E3A5A).withValues(alpha: 0.1),
-              trackHeight: 4,
-            ),
-            child: Slider(
-              value: _settingsService.soundscapeVolume.toDouble(),
-              min: 0,
-              max: 100,
-              divisions: 20,
-              onChanged: (value) {
-                _settingsService.updateSoundscapeVolume(value.toInt());
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHapticsSwitchRow() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
-      child: Row(
-        children: [
-          Icon(
-            Icons.vibration_outlined,
-            size: 24,
-            color: const Color(0xFF1E3A5A),
-          ),
-          SizedBox(width: 3.w),
-          Expanded(
-            child: Text(
-              'Haptic Feedback',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ),
-          Switch(
-            value: _settingsService.hapticsEnabled,
-            onChanged: (value) {
-              HapticFeedback.lightImpact();
-              _settingsService.updateHapticsEnabled(value);
-            },
-            activeColor: const Color(0xFF1E3A5A),
-          ),
-        ],
       ),
     );
   }

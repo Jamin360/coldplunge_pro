@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/feature_flags.dart';
+
 /// Custom bottom navigation bar implementing Arctic Clarity design principles
 /// with gesture-first navigation optimized for cold plunge wellness app
 class CustomBottomBar extends StatelessWidget {
@@ -52,17 +54,18 @@ class CustomBottomBar extends StatelessWidget {
                 label: 'Timer',
                 route: '/plunge-timer',
               ),
+              if (kEnableChallenges)
+                _buildNavItem(
+                  context: context,
+                  index: 2,
+                  icon: Icons.emoji_events_outlined,
+                  activeIcon: Icons.emoji_events,
+                  label: 'Challenges',
+                  route: '/challenges',
+                ),
               _buildNavItem(
                 context: context,
-                index: 2,
-                icon: Icons.emoji_events_outlined,
-                activeIcon: Icons.emoji_events,
-                label: 'Challenges',
-                route: '/challenges',
-              ),
-              _buildNavItem(
-                context: context,
-                index: 3,
+                index: kEnableChallenges ? 3 : 2,
                 icon: Icons.analytics_outlined,
                 activeIcon: Icons.analytics,
                 label: 'Analytics',

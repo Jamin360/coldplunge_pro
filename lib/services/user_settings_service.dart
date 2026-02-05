@@ -45,20 +45,12 @@ class UserSettingsService extends ChangeNotifier {
 
       _displayName = response['full_name'] as String? ?? '';
 
-      // preferred_temperature is stored in Celsius in the database
-      final preferredTemp = response['preferred_temperature'] as int?;
-      if (preferredTemp != null) {
-        // TODO: Add temp_unit field to user_profiles table
-        // For now, default to Fahrenheit
-        _temperatureUnit = 'F';
-      }
+      // Load temperature unit preference from database
+      _temperatureUnit = response['temp_unit'] as String? ?? 'F';
 
-      // TODO: Add these fields to user_profiles table:
-      // - soundscape_volume (int 0-100)
-      // - haptics_enabled (boolean)
-      // For now, use defaults
-      _soundscapeVolume = 70;
-      _hapticsEnabled = true;
+      // Load soundscape volume and haptics settings
+      _soundscapeVolume = response['soundscape_volume'] as int? ?? 70;
+      _hapticsEnabled = response['haptics_enabled'] as bool? ?? true;
 
       notifyListeners();
     } catch (error) {
@@ -96,9 +88,21 @@ class UserSettingsService extends ChangeNotifier {
       throw ArgumentError('Temperature unit must be F or C');
     }
 
-    // TODO: Add temp_unit field to user_profiles table and persist
-    _temperatureUnit = unit;
-    notifyListeners();
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      await _client
+          .from('user_profiles')
+          .update({'temp_unit': unit}).eq('id', currentUser.id);
+
+      _temperatureUnit = unit;
+      notifyListeners();
+    } catch (error) {
+      throw Exception('Failed to update temperature unit: $error');
+    }
   }
 
   /// Update soundscape volume
@@ -107,16 +111,40 @@ class UserSettingsService extends ChangeNotifier {
       throw ArgumentError('Volume must be between 0 and 100');
     }
 
-    // TODO: Add soundscape_volume field to user_profiles table and persist
-    _soundscapeVolume = volume;
-    notifyListeners();
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      await _client
+          .from('user_profiles')
+          .update({'soundscape_volume': volume}).eq('id', currentUser.id);
+
+      _soundscapeVolume = volume;
+      notifyListeners();
+    } catch (error) {
+      throw Exception('Failed to update soundscape volume: $error');
+    }
   }
 
   /// Update haptics enabled
   Future<void> updateHapticsEnabled(bool enabled) async {
-    // TODO: Add haptics_enabled field to user_profiles table and persist
-    _hapticsEnabled = enabled;
-    notifyListeners();
+    final currentUser = _client.auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      await _client
+          .from('user_profiles')
+          .update({'haptics_enabled': enabled}).eq('id', currentUser.id);
+
+      _hapticsEnabled = enabled;
+      notifyListeners();
+    } catch (error) {
+      throw Exception('Failed to update haptics setting: $error');
+    }
   }
 
   /// Delete user account (dangerous operation)

@@ -140,10 +140,6 @@ class _ChallengesState extends State<Challenges> with TickerProviderStateMixin {
   }
 
   List<Map<String, dynamic>> get _filteredChallenges {
-    final userChallengeIds = _userChallenges
-        .map((uc) => (uc['challenges'] as Map<String, dynamic>)['id'])
-        .toSet();
-
     switch (_selectedFilter) {
       case 'active':
         return _userChallenges

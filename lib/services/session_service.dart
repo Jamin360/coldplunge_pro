@@ -1,6 +1,6 @@
 import 'dart:async';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/log_error_helper.dart';
 
 class SessionService {
   static SessionService? _instance;
@@ -29,28 +29,29 @@ class SessionService {
       throw Exception('User not authenticated');
     }
 
-    try {
-      final sessionData = {
-        'user_id': currentUser.id,
-        'location': location,
-        'duration': duration,
-        'temperature': temperature,
-        'pre_mood': preMood,
-        'post_mood': postMood,
-        'notes': notes,
-        'breathing_technique': breathingTechnique,
-        'created_at': DateTime.now().toIso8601String(),
-      };
+    final sessionData = {
+      'user_id': currentUser.id,
+      'location': location,
+      'duration': duration,
+      'temperature': temperature,
+      'pre_mood': preMood,
+      'post_mood': postMood,
+      'notes': notes,
+      'breathing_technique': breathingTechnique,
+      'created_at': DateTime.now().toIso8601String(),
+    };
 
+    try {
       final response = await _client
           .from('plunge_sessions')
           .insert(sessionData)
           .select()
           .single();
-
       return response;
     } catch (error) {
-      throw Exception('Failed to create session: $error');
+      // Log Supabase error details
+      logError(error: error, source: 'Supabase createSession');
+      rethrow;
     }
   }
 
@@ -95,6 +96,8 @@ class SessionService {
       completer.complete(response);
       return response;
     } catch (error) {
+      // Log Supabase error details
+      logError(error: error, source: 'Supabase createSessionUltraOptimized');
       completer.completeError(error);
       rethrow;
     } finally {

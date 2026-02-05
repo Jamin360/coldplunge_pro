@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/feature_flags.dart';
 import '../widgets/custom_bottom_bar.dart';
 import 'challenges/challenges.dart';
 import 'home_dashboard/home_dashboard_tab.dart';
@@ -36,11 +37,11 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold>
     _currentIndex = widget.initialIndex;
 
     // Initialize all tabs once
-    _tabs = const [
-      HomeDashboardTab(),
-      PlungeTimer(),
-      Challenges(),
-      PersonalAnalytics(),
+    _tabs = [
+      const HomeDashboardTab(),
+      const PlungeTimer(),
+      if (kEnableChallenges) const Challenges(),
+      const PersonalAnalytics(),
     ];
   }
 
