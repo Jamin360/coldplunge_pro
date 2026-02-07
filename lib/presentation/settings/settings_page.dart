@@ -6,6 +6,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_settings_service.dart';
+import '../../services/feedback_service.dart';
+import '../../services/data_prefetch_service.dart';
+import '../../services/dashboard_repository.dart';
+import '../../services/analytics_repository.dart';
+import '../../services/persistent_cache_service.dart';
 import '../../widgets/custom_app_bar.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -17,9 +22,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _settingsService = UserSettingsService.instance;
-  final _nameController = TextEditingController();
   bool _isLoading = true;
-  bool _isSaving = false;
   String _appVersion = '';
   String _buildNumber = '';
 
@@ -32,7 +35,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     super.dispose();
   }
 
@@ -40,7 +42,6 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isLoading = true);
     try {
       await _settingsService.loadSettings();
-      _nameController.text = _settingsService.displayName;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -69,39 +70,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _saveDisplayName() async {
-    final newName = _nameController.text.trim();
-    if (newName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
-      );
-      return;
-    }
-
-    setState(() => _isSaving = true);
-    try {
-      await _settingsService.updateDisplayName(newName);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Name updated successfully')),
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update name: $error'),
-            backgroundColor: AppTheme.errorLight,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
-  }
-
   Future<void> _handleSignOut() async {
     final shouldSignOut = await showDialog<bool>(
       context: context,
@@ -126,6 +94,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (shouldSignOut == true && mounted) {
       try {
+        // Clear all cached data
+        final persistentCache = PersistentCacheService();
+        final dashboardRepo =
+            DashboardRepository(persistentCacheService: persistentCache);
+        final analyticsRepo =
+            AnalyticsRepository(persistentCacheService: persistentCache);
+
+        dashboardRepo.clearCache();
+        analyticsRepo.clearCache();
+        DataPrefetchService.instance.reset();
+
         await AuthService.instance.signOut();
         if (mounted) {
           Navigator.pushNamedAndRemoveUntil(
@@ -202,10 +181,8 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _handleSendFeedback() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Send feedback - Coming soon')),
-    );
+  void _handleSendFeedback() async {
+    await FeedbackService.sendEmailFeedback(context);
   }
 
   @override
@@ -230,15 +207,18 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSectionCard(
                       title: 'Profile',
                       children: [
-                        _buildEditableTextField(
-                          label: 'Display Name',
-                          controller: _nameController,
-                          onSave: _saveDisplayName,
-                          isSaving: _isSaving,
+                        _buildProfileRow(
+                          value: _settingsService.displayName,
+                          icon: Icons.person_outline,
                         ),
-                        const Divider(height: 1),
-                        _buildReadOnlyRow(
-                          label: 'Email',
+                        const SizedBox(height: 12),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildProfileRow(
                           value: _settingsService.email,
                           icon: Icons.email_outlined,
                         ),
@@ -256,7 +236,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           icon: Icons.download_outlined,
                           onTap: _handleExportSessions,
                         ),
-                        const Divider(height: 1),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: const Color(0xFFE2E8F0),
+                        ),
                         _buildActionRow(
                           label: 'Delete Account',
                           icon: Icons.delete_outline,
@@ -277,7 +261,11 @@ class _SettingsPageState extends State<SettingsPage> {
                           icon: Icons.feedback_outlined,
                           onTap: _handleSendFeedback,
                         ),
-                        const Divider(height: 1),
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: const Color(0xFFE2E8F0),
+                        ),
                         _buildReadOnlyRow(
                           label: 'Version',
                           value: _appVersion.isNotEmpty
@@ -342,12 +330,12 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(4.w, 2.h, 4.w, 1.h),
-            child: Text(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               title,
               style: theme.textTheme.titleSmall?.copyWith(
                 color: const Color(0xFF64748B),
@@ -355,65 +343,30 @@ class _SettingsPageState extends State<SettingsPage> {
                 letterSpacing: 0.5,
               ),
             ),
-          ),
-          ...children,
-        ],
+            const SizedBox(height: 12),
+            ...children,
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildEditableTextField({
-    required String label,
-    required TextEditingController controller,
-    required VoidCallback onSave,
-    required bool isSaving,
+  Widget _buildProfileRow({
+    required String value,
+    required IconData icon,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
-      child: Row(
-        children: [
-          Icon(Icons.person_outline, size: 24, color: const Color(0xFF1E3A5A)),
-          SizedBox(width: 3.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF64748B),
-                      ),
-                ),
-                SizedBox(height: 0.5.h),
-                TextField(
-                  controller: controller,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  onSubmitted: (_) => onSave(),
-                ),
-              ],
-            ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 24, color: const Color(0xFF1E3A5A)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
-          if (isSaving)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.check, size: 20),
-              color: const Color(0xFF1E3A5A),
-              onPressed: onSave,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -422,32 +375,31 @@ class _SettingsPageState extends State<SettingsPage> {
     required String value,
     required IconData icon,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: const Color(0xFF1E3A5A)),
-          SizedBox(width: 3.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF64748B),
-                      ),
-                ),
-                SizedBox(height: 0.5.h),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: const Color(0xFF64748B),
+              ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: const Color(0xFF1E3A5A)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                value,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -465,11 +417,11 @@ class _SettingsPageState extends State<SettingsPage> {
         onTap();
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.5.h),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
             Icon(icon, size: 24, color: color),
-            SizedBox(width: 3.w),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,

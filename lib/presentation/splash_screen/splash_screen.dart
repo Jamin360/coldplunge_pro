@@ -4,6 +4,7 @@ import 'package:sizer/sizer.dart';
 import '../../core/app_export.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
+import '../../services/data_prefetch_service.dart';
 import './widgets/animated_logo_widget.dart';
 import './widgets/gradient_background_widget.dart';
 import './widgets/loading_indicator_widget.dart';
@@ -61,6 +62,9 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkAuthAndNavigate() {
     // Check if user is authenticated
     if (AuthService.instance.isAuthenticated) {
+      // Prefetch data in background for instant tab display
+      DataPrefetchService.instance.prefetchAppData();
+
       // User is logged in, go to home
       Navigator.pushReplacementNamed(context, AppRoutes.homeDashboard);
     } else {

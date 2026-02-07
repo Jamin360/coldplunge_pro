@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
+import 'mood_slider.dart';
+
 class SessionSetupWidget extends StatefulWidget {
   final Function(double temperature, String location, int mood, String tempUnit)
       onSetupComplete;
@@ -298,77 +300,13 @@ class _SessionSetupWidgetState extends State<SessionSetupWidget>
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(height: 1.h),
-                        // Mood value display
-                        Center(
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 4.w,
-                              vertical: 1.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${_selectedMood.round()}/10',
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                color: colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 1.h),
-                        // Slider
-                        SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            activeTrackColor: colorScheme.primary,
-                            inactiveTrackColor:
-                                colorScheme.primary.withValues(alpha: 0.2),
-                            thumbColor: colorScheme.primary,
-                            overlayColor:
-                                colorScheme.primary.withValues(alpha: 0.1),
-                            trackHeight: 4.0,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 12.0,
-                            ),
-                            overlayShape: const RoundSliderOverlayShape(
-                              overlayRadius: 20.0,
-                            ),
-                          ),
-                          child: Slider(
-                            value: _selectedMood,
-                            min: 1,
-                            max: 10,
-                            divisions: 9,
-                            label: '${_selectedMood.round()}',
-                            onChanged: (value) {
-                              setState(() => _selectedMood = value);
-                              HapticFeedback.lightImpact();
-                            },
-                          ),
-                        ),
-                        // Low/High labels
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 2.w),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Low',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              Text(
-                                'High',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
+                        SizedBox(height: 2.h),
+                        // Mood slider with animated pill
+                        MoodSlider(
+                          value: _selectedMood.round(),
+                          onChanged: (value) {
+                            setState(() => _selectedMood = value.toDouble());
+                          },
                         ),
                         SizedBox(height: 4.h),
 

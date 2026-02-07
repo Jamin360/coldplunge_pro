@@ -13,6 +13,7 @@ import '../../core/utils/chart_utils.dart';
 import '../../services/analytics_service.dart';
 import '../../services/analytics_repository.dart';
 import '../../services/persistent_cache_service.dart';
+import '../../widgets/skeleton_loader.dart';
 import './widgets/chart_container_widget.dart';
 import './widgets/metrics_card_widget.dart';
 import './widgets/progress_goal_widget.dart';
@@ -43,6 +44,9 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
   List<Map<String, dynamic>> _temperatureProgressData = [];
   bool _isLoading = true;
   String? _errorMessage;
+
+  // Single source of truth for computed analytics - used by both Key Metrics and PDF
+  Map<String, dynamic> _computedMetrics = {};
 
   // Static achievements data (can be moved to database later)
   final List<Map<String, dynamic>> _achievements = [
@@ -104,7 +108,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
     }
   }
 
-  Future<void> _loadAnalyticsData() async {
+  Future<void> _loadAnalyticsData({bool forceRefresh = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -113,6 +117,7 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
     try {
       final analyticsData = await _analyticsRepository.getAnalyticsData(
         key: 'main',
+        forceRefresh: forceRefresh,
         fetcher: () async {
           final analytics =
               await _analyticsService.getUserAnalytics(_selectedPeriod);
@@ -131,30 +136,47 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
         },
       );
 
-      setState(() {
-        _analyticsData =
-            Map<String, dynamic>.from(analyticsData['analyticsData'] ?? {});
-        _keyMetrics = _buildKeyMetricsFromData(
-            Map<String, dynamic>.from(analyticsData['keyMetrics'] ?? {}));
-        _sessionFrequencyData = List<Map<String, dynamic>>.from(
-            analyticsData['frequencyData'] ?? []);
-        _temperatureProgressData = List<Map<String, dynamic>>.from(
-            analyticsData['temperatureData'] ?? []);
-        _updateAchievements(
-            Map<String, dynamic>.from(analyticsData['keyMetrics'] ?? {}));
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _analyticsData =
+              Map<String, dynamic>.from(analyticsData['analyticsData'] ?? {});
+
+          // Calculate computed metrics - SINGLE SOURCE OF TRUTH
+          _computedMetrics =
+              Map<String, dynamic>.from(analyticsData['keyMetrics'] ?? {});
+
+          // Build UI-specific key metrics from computed data
+          _keyMetrics = _buildKeyMetricsFromData(_computedMetrics);
+
+          _sessionFrequencyData = List<Map<String, dynamic>>.from(
+              analyticsData['frequencyData'] ?? []);
+          _temperatureProgressData = List<Map<String, dynamic>>.from(
+              analyticsData['temperatureData'] ?? []);
+          _updateAchievements(_computedMetrics);
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-        _isLoading = false;
-      });
+      print('Analytics data load error: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Couldn\'t refresh. Showing cached data.'),
+            backgroundColor: AppTheme.errorLight,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
   Future<void> _handleRefresh() async {
     HapticFeedback.lightImpact();
-    await _loadAnalyticsData();
+    await _loadAnalyticsData(forceRefresh: true);
   }
 
   List<Map<String, dynamic>> _buildKeyMetricsFromData(
@@ -423,27 +445,27 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
                         ),
 
                         // Progress Goals
-                        if (_analyticsData['weeklyGoal'] != null) ...[
+                        if (_computedMetrics['weeklyGoal'] != null) ...[
                           SizedBox(height: 3.w),
                           ProgressGoalWidget(
                             title: 'Weekly Goal Progress',
-                            currentValue: _analyticsData['weeklyGoal']
+                            currentValue: _computedMetrics['weeklyGoal']
                                         ['currentSessions']
                                     ?.toString() ??
                                 '0',
-                            targetValue: _analyticsData['weeklyGoal']
+                            targetValue: _computedMetrics['weeklyGoal']
                                         ['targetSessions']
                                     ?.toString() ??
                                 '0',
-                            progress: _analyticsData['weeklyGoal']
+                            progress: _computedMetrics['weeklyGoal']
                                             ['currentSessions'] !=
                                         null &&
-                                    _analyticsData['weeklyGoal']
+                                    _computedMetrics['weeklyGoal']
                                             ['targetSessions'] !=
                                         null
-                                ? (_analyticsData['weeklyGoal']
+                                ? (_computedMetrics['weeklyGoal']
                                             ['currentSessions'] /
-                                        _analyticsData['weeklyGoal']
+                                        _computedMetrics['weeklyGoal']
                                             ['targetSessions'])
                                     .clamp(0.0, 1.0)
                                 : 0.0,
@@ -901,8 +923,123 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
                             },
                           ),
 
-                        // Bottom spacing only - removed all content below Temperature chart to prevent scrolling
-                        SizedBox(height: 4.w),
+                        // Statistics Summary Section
+                        SizedBox(height: 3.w),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4.w),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: colorScheme.shadow.withValues(
+                                    alpha: 0.05,
+                                  ),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.all(4.w),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.analytics_outlined,
+                                        color: colorScheme.primary,
+                                        size: 6.w,
+                                      ),
+                                      SizedBox(width: 3.w),
+                                      Text(
+                                        'Statistics Summary',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                          color: colorScheme.onSurface,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: colorScheme.outline.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                ),
+                                _buildStatRow(
+                                  'Total Sessions',
+                                  '${_computedMetrics['totalSessions'] ?? 0}',
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Total Time',
+                                  _formatTotalDuration(
+                                    _computedMetrics['totalTimeSeconds']
+                                            as int? ??
+                                        0,
+                                  ),
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Average Duration',
+                                  _formatDuration(
+                                    (_computedMetrics['avgDuration'] as num?)
+                                            ?.round() ??
+                                        0,
+                                  ),
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Current Streak',
+                                  '${_computedMetrics['currentStreak'] ?? 0} days',
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Longest Streak',
+                                  '${_computedMetrics['longestStreak'] ?? 0} days',
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Average Temp',
+                                  '${(_computedMetrics['avgTemp'] as num?)?.toStringAsFixed(1) ?? 'N/A'}°F',
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Coldest Plunge',
+                                  '${_computedMetrics['coldestTemp'] ?? 'N/A'}°F',
+                                  colorScheme,
+                                  theme,
+                                ),
+                                _buildStatRow(
+                                  'Personal Best',
+                                  _formatDuration(
+                                    _computedMetrics['personalBestDuration']
+                                            as int? ??
+                                        0,
+                                  ),
+                                  colorScheme,
+                                  theme,
+                                  isLast: true,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Bottom spacing for comfortable scrolling
+                        SizedBox(height: 8.w),
                       ],
                     ),
                   ),
@@ -910,8 +1047,48 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
     );
   }
 
+  Widget _buildStatRow(
+    String label,
+    String value,
+    ColorScheme colorScheme,
+    ThemeData theme, {
+    bool isLast = false,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 3.w),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(
+                  color: colorScheme.outline.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _getMotivationalMessage() {
-    final weeklyGoal = _analyticsData['weeklyGoal'];
+    final weeklyGoal = _computedMetrics['weeklyGoal'];
     if (weeklyGoal != null) {
       final current = weeklyGoal['currentSessions'] ?? 0;
       final target = weeklyGoal['targetSessions'] ?? 0;
@@ -986,26 +1163,57 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
     ColorScheme colorScheme,
     ThemeData theme,
   ) {
-    return ListView(
+    return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(height: 40.h),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: colorScheme.primary),
-              SizedBox(height: 4.w),
-              Text(
-                'Loading analytics...',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 3.w),
+
+          // Key Metrics Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 3.w,
+                mainAxisSpacing: 3.w,
+                childAspectRatio: 1.1,
               ),
-            ],
+              itemCount: 4,
+              itemBuilder: (context, index) => const SkeletonMetricCard(),
+            ),
           ),
-        ),
-      ],
+
+          SizedBox(height: 3.w),
+
+          // Session Frequency Chart Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: const SkeletonChart(),
+          ),
+
+          SizedBox(height: 3.w),
+
+          // Temperature Chart Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: const SkeletonChart(),
+          ),
+
+          SizedBox(height: 3.w),
+
+          // Statistics Table Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: const SkeletonAnalyticsTable(rowCount: 8),
+          ),
+
+          SizedBox(height: 8.w),
+        ],
+      ),
     );
   }
 
@@ -1058,6 +1266,17 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
 
   Future<void> _exportToPdf() async {
     try {
+      // Debug: Verify computed metrics before PDF generation
+      print('📊 PDF Export - Computed Metrics:');
+      print('   Total Sessions: ${_computedMetrics['totalSessions']}');
+      print('   Total Time: ${_computedMetrics['totalTimeSeconds']}s');
+      print('   Avg Duration: ${_computedMetrics['avgDuration']}s');
+      print('   Current Streak: ${_computedMetrics['currentStreak']}');
+      print('   Longest Streak: ${_computedMetrics['longestStreak']}');
+      print('   Avg Temp: ${_computedMetrics['avgTemp']}°F');
+      print('   Coldest Temp: ${_computedMetrics['coldestTemp']}°F');
+      print('   Personal Best: ${_computedMetrics['personalBestDuration']}s');
+
       // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1071,262 +1290,277 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
 
       final pdf = pw.Document();
 
-      // Add pages to PDF
-      pdf.addPage(
-        pw.MultiPage(
-          pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.all(32),
-          build: (context) => [
-            // Header
-            pw.Header(
-              level: 0,
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      // Build all content for single page
+      final content = pw.Column(
+        mainAxisAlignment: pw.MainAxisAlignment.start,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        mainAxisSize: pw.MainAxisSize.min,
+        children: [
+          // Header
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'Personal Analytics',
-                        style: pw.TextStyle(
-                          fontSize: 28,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.blue900,
-                        ),
-                      ),
-                      pw.SizedBox(height: 4),
-                      pw.Text(
-                        'ColdPlunge Pro',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                    ],
-                  ),
                   pw.Text(
-                    DateTime.now().toString().split(' ')[0],
+                    'Personal Analytics',
                     style: pw.TextStyle(
-                      fontSize: 12,
-                      color: PdfColors.grey600,
+                      fontSize: 22,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blue900,
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'ColdPlunge Pro',
+                    style: pw.TextStyle(
+                      fontSize: 11,
+                      color: PdfColors.grey700,
                     ),
                   ),
                 ],
               ),
-            ),
-            pw.SizedBox(height: 20),
-
-            // Key Metrics Section
-            pw.Text(
-              'Key Metrics',
-              style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blue900,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-            pw.Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: _keyMetrics.map((metric) {
-                return pw.Container(
-                  width: 160,
-                  padding: const pw.EdgeInsets.all(16),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.blue50,
-                    borderRadius: pw.BorderRadius.circular(12),
-                    border: pw.Border.all(
-                      color: PdfColors.blue200,
-                      width: 1,
-                    ),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        metric['title'] as String,
-                        style: pw.TextStyle(
-                          fontSize: 11,
-                          color: PdfColors.grey700,
-                        ),
-                      ),
-                      pw.SizedBox(height: 8),
-                      pw.Text(
-                        metric['value'] as String,
-                        style: pw.TextStyle(
-                          fontSize: 20,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.blue900,
-                        ),
-                      ),
-                      if (metric['subtitle'] != null) ...[
-                        pw.SizedBox(height: 4),
-                        pw.Text(
-                          metric['subtitle'] as String,
-                          style: pw.TextStyle(
-                            fontSize: 10,
-                            color: PdfColors.grey600,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-            pw.SizedBox(height: 24),
-
-            // Statistics Summary
-            pw.Text(
-              'Statistics Summary',
-              style: pw.TextStyle(
-                fontSize: 18,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blue900,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-            pw.Table(
-              border: pw.TableBorder.all(
-                color: PdfColors.grey300,
-                width: 1,
-              ),
-              children: [
-                // Header row
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(
-                    color: PdfColors.blue50,
-                  ),
-                  children: [
-                    _buildTableCell('Metric', isHeader: true),
-                    _buildTableCell('Value', isHeader: true),
-                  ],
-                ),
-                // Data rows
-                _buildTableRow('Total Sessions',
-                    '${_analyticsData['total_sessions'] ?? 0}'),
-                _buildTableRow(
-                    'Total Time',
-                    _formatTotalDuration(
-                        _analyticsData['total_duration'] as int? ?? 0)),
-                _buildTableRow(
-                    'Average Duration',
-                    _formatDuration(
-                        _analyticsData['avg_duration'] as int? ?? 0)),
-                _buildTableRow('Current Streak',
-                    '${_analyticsData['current_streak'] ?? 0} days'),
-                _buildTableRow('Longest Streak',
-                    '${_analyticsData['longest_streak'] ?? 0} days'),
-                _buildTableRow('Average Temperature',
-                    '${(_analyticsData['avg_temperature'] as num?)?.toStringAsFixed(1) ?? 'N/A'}°F'),
-                _buildTableRow('Coldest Plunge',
-                    '${_analyticsData['coldest_plunge'] ?? 'N/A'}°F'),
-                _buildTableRow(
-                    'Personal Best',
-                    _formatDuration(
-                        _analyticsData['personal_best'] as int? ?? 0)),
-              ],
-            ),
-            pw.SizedBox(height: 24),
-
-            // Session Frequency (if available)
-            if (_sessionFrequencyData.isNotEmpty) ...[
               pw.Text(
-                'Session Frequency',
+                DateTime.now().toString().split(' ')[0],
                 style: pw.TextStyle(
-                  fontSize: 18,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blue900,
-                ),
-              ),
-              pw.SizedBox(height: 12),
-              pw.Text(
-                'Recent session activity by day of week',
-                style: pw.TextStyle(
-                  fontSize: 12,
+                  fontSize: 10,
                   color: PdfColors.grey600,
                 ),
               ),
-              pw.SizedBox(height: 16),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-                children: _sessionFrequencyData.map((data) {
-                  final count = data['sessions'] as int? ?? 0;
-                  final label = _selectedPeriod == 'Week'
-                      ? (data['day'] as String? ?? '')
-                      : (data['week'] as String? ?? '');
-                  return pw.Column(
-                    children: [
-                      pw.Container(
-                        height: 80,
-                        width: 40,
-                        child: pw.Stack(
-                          children: [
-                            pw.Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: pw.Container(
-                                height: count > 0
-                                    ? (count * 10).toDouble().clamp(5, 80)
-                                    : 0,
-                                decoration: pw.BoxDecoration(
-                                  color: PdfColors.blue400,
-                                  borderRadius: pw.BorderRadius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+
+          // Key Metrics Section
+          pw.Text(
+            'Key Metrics',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue900,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _keyMetrics.map((metric) {
+              return pw.Container(
+                width: 120,
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.blue50,
+                  borderRadius: pw.BorderRadius.circular(8),
+                  border: pw.Border.all(
+                    color: PdfColors.blue200,
+                    width: 1,
+                  ),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      metric['title'] as String,
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey700,
                       ),
-                      pw.SizedBox(height: 8),
-                      pw.Text(
-                        label,
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          color: PdfColors.grey700,
-                        ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      metric['value'] as String,
+                      style: pw.TextStyle(
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue900,
                       ),
-                      pw.SizedBox(height: 4),
+                    ),
+                    if (metric['subtitle'] != null) ...[
+                      pw.SizedBox(height: 2),
                       pw.Text(
-                        count.toString(),
+                        metric['subtitle'] as String,
                         style: pw.TextStyle(
-                          fontSize: 9,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.blue900,
+                          fontSize: 7,
+                          color: PdfColors.grey600,
                         ),
                       ),
                     ],
-                  );
-                }).toList(),
-              ),
-              pw.SizedBox(height: 24),
-            ],
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          pw.SizedBox(height: 12),
 
-            // Footer
-            pw.Divider(color: PdfColors.grey300),
-            pw.SizedBox(height: 12),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'Generated by ColdPlunge Pro',
-                  style: pw.TextStyle(
-                    fontSize: 10,
-                    color: PdfColors.grey600,
-                  ),
-                ),
-                pw.Text(
-                  'Page 1',
-                  style: pw.TextStyle(
-                    fontSize: 10,
-                    color: PdfColors.grey600,
-                  ),
-                ),
-              ],
+          // Statistics Summary
+          pw.Text(
+            'Statistics Summary',
+            style: pw.TextStyle(
+              fontSize: 14,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue900,
             ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Table(
+            border: pw.TableBorder.all(
+              color: PdfColors.grey300,
+              width: 0.5,
+            ),
+            children: [
+              // Header row
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(
+                  color: PdfColors.blue50,
+                ),
+                children: [
+                  _buildTableCell('Metric', isHeader: true),
+                  _buildTableCell('Value', isHeader: true),
+                ],
+              ),
+              // Data rows - using _computedMetrics (same source as Key Metrics)
+              _buildTableRow('Total Sessions',
+                  '${_computedMetrics['totalSessions'] ?? 0}'),
+              _buildTableRow(
+                  'Total Time',
+                  _formatTotalDuration(
+                      _computedMetrics['totalTimeSeconds'] as int? ?? 0)),
+              _buildTableRow(
+                  'Avg Duration',
+                  _formatDuration(
+                      (_computedMetrics['avgDuration'] as num?)?.round() ?? 0)),
+              _buildTableRow('Current Streak',
+                  '${_computedMetrics['currentStreak'] ?? 0} days'),
+              _buildTableRow('Longest Streak',
+                  '${_computedMetrics['longestStreak'] ?? 0} days'),
+              _buildTableRow('Avg Temp',
+                  '${(_computedMetrics['avgTemp'] as num?)?.toStringAsFixed(1) ?? 'N/A'}°F'),
+              _buildTableRow('Coldest Plunge',
+                  '${_computedMetrics['coldestTemp'] ?? 'N/A'}°F'),
+              _buildTableRow(
+                  'Personal Best',
+                  _formatDuration(
+                      _computedMetrics['personalBestDuration'] as int? ?? 0)),
+            ],
+          ),
+          pw.SizedBox(height: 12),
+
+          // Session Frequency (if available)
+          if (_sessionFrequencyData.isNotEmpty) ...[
+            pw.Text(
+              'Session Frequency',
+              style: pw.TextStyle(
+                fontSize: 14,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue900,
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Recent session activity',
+              style: pw.TextStyle(
+                fontSize: 9,
+                color: PdfColors.grey600,
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+              children: _sessionFrequencyData.take(7).map((data) {
+                final count = data['sessions'] as int? ?? 0;
+                final label = _selectedPeriod == 'Week'
+                    ? (data['day'] as String? ?? '')
+                    : (data['week'] as String? ?? '');
+                return pw.Column(
+                  children: [
+                    pw.Container(
+                      height: 50,
+                      width: 30,
+                      child: pw.Stack(
+                        children: [
+                          pw.Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: pw.Container(
+                              height: count > 0
+                                  ? (count * 8).toDouble().clamp(4, 50)
+                                  : 0,
+                              decoration: pw.BoxDecoration(
+                                color: PdfColors.blue400,
+                                borderRadius: pw.BorderRadius.circular(3),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      label,
+                      style: pw.TextStyle(
+                        fontSize: 7,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      count.toString(),
+                      style: pw.TextStyle(
+                        fontSize: 7,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.blue900,
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+            pw.SizedBox(height: 8),
           ],
+
+          // Footer
+          pw.Divider(color: PdfColors.grey300, thickness: 0.5),
+          pw.SizedBox(height: 6),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                'Generated by ColdPlunge Pro',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  color: PdfColors.grey600,
+                ),
+              ),
+              pw.Text(
+                DateTime.now().toString().split(' ')[0],
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  color: PdfColors.grey600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
+      // Add single page with top-aligned content
+      pdf.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(16),
+          build: (context) => pw.Align(
+            alignment: pw.Alignment.topLeft,
+            child: pw.FittedBox(
+              fit: pw.BoxFit.scaleDown,
+              alignment: pw.Alignment.topLeft,
+              child: pw.Container(
+                width: PdfPageFormat.a4.width - 32,
+                child: content,
+              ),
+            ),
+          ),
         ),
       );
 
@@ -1376,11 +1610,11 @@ class _PersonalAnalyticsState extends State<PersonalAnalytics>
 
   pw.Widget _buildTableCell(String text, {bool isHeader = false}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.all(8),
+      padding: const pw.EdgeInsets.all(6),
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: isHeader ? 12 : 11,
+          fontSize: isHeader ? 9 : 8,
           fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
           color: isHeader ? PdfColors.blue900 : PdfColors.grey800,
         ),

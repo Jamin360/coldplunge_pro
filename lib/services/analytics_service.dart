@@ -486,16 +486,19 @@ class AnalyticsService {
     // Total sessions from profile (synced via update_user_stats trigger)
     final totalSessions = profile['total_sessions'] ?? 0;
 
-    // Calculate average duration from actual session data
+    // Calculate total time and average duration from actual session data
     double avgDuration = 0.0;
+    int totalTimeSeconds = 0;
     if (sessions.isNotEmpty) {
       final durations =
           sessions.map<int>((session) => session['duration'] ?? 0).toList();
-      avgDuration = durations.reduce((a, b) => a + b) / durations.length;
+      totalTimeSeconds = durations.reduce((a, b) => a + b);
+      avgDuration = totalTimeSeconds / durations.length;
     }
 
-    // Find coldest temperature
+    // Find coldest temperature and calculate average temperature
     int? coldestTemp;
+    double? avgTemp;
     if (sessions.isNotEmpty) {
       final temperatures = sessions
           .where((session) => session['temperature'] != null)
@@ -503,34 +506,88 @@ class AnalyticsService {
           .toList();
       if (temperatures.isNotEmpty) {
         coldestTemp = temperatures.reduce((a, b) => a < b ? a : b);
+        avgTemp = temperatures.reduce((a, b) => a + b) / temperatures.length;
       }
     }
 
     // Get personal best duration from profile
     final personalBestDuration = profile['personal_best_duration'] ?? 0;
 
-    // Calculate current streak using shared calculator
+    // Calculate current streak and longest streak using shared calculator
     // We need ALL sessions, not just the period-limited ones
     // So we'll use the allSessions key if available, or return streak from profile
     final allSessions = analyticsData['allSessions'] as List<dynamic>?;
     int currentStreak;
+    int longestStreak = 0;
     if (allSessions != null && allSessions.isNotEmpty) {
       final sessionMaps =
           allSessions.map((s) => Map<String, dynamic>.from(s as Map)).toList();
       currentStreak = StreakCalculator.calculateCurrentStreak(sessionMaps);
+      longestStreak = _calculateLongestStreak(sessionMaps);
     } else {
       // Fallback to profile's streak_count if allSessions not available
       currentStreak = profile['streak_count'] ?? 0;
+      longestStreak = currentStreak; // Use current as best guess
     }
 
     return {
       'totalSessions': totalSessions,
       'currentStreak': currentStreak,
+      'longestStreak': longestStreak,
       'avgDuration': avgDuration,
+      'totalTimeSeconds': totalTimeSeconds,
       'coldestTemp': coldestTemp,
+      'avgTemp': avgTemp,
       'weeklyGoal': weeklyGoal,
       'personalBestDuration': personalBestDuration,
     };
+  }
+
+  /// Calculate the longest streak from all sessions
+  /// This examines all possible streaks, not just the current one
+  int _calculateLongestStreak(List<Map<String, dynamic>> sessions) {
+    if (sessions.isEmpty) return 0;
+
+    try {
+      // Extract unique local dates from sessions
+      final sessionDates = <DateTime>{};
+      for (final session in sessions) {
+        final createdAtUtc = DateTime.parse(session['created_at'] as String);
+        final createdAtLocal = createdAtUtc.toLocal();
+        final dateOnly = DateTime(
+          createdAtLocal.year,
+          createdAtLocal.month,
+          createdAtLocal.day,
+        );
+        sessionDates.add(dateOnly);
+      }
+
+      // Sort dates in ascending order for streak counting
+      final sortedDates = sessionDates.toList()..sort();
+
+      int maxStreak = 1;
+      int currentStreakCount = 1;
+
+      for (int i = 1; i < sortedDates.length; i++) {
+        final daysDiff = sortedDates[i].difference(sortedDates[i - 1]).inDays;
+
+        if (daysDiff == 1) {
+          // Consecutive day
+          currentStreakCount++;
+          if (currentStreakCount > maxStreak) {
+            maxStreak = currentStreakCount;
+          }
+        } else {
+          // Gap found, reset streak
+          currentStreakCount = 1;
+        }
+      }
+
+      return maxStreak;
+    } catch (e) {
+      print('❌ Error calculating longest streak: $e');
+      return 0;
+    }
   }
 
   /// Calculate current streak by checking consecutive days with sessions

@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
+import '../../services/data_prefetch_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +38,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (response.user != null && mounted) {
+        // Prefetch data in background for instant tab display
+        DataPrefetchService.instance.prefetchAppData();
+
         // Navigate to home screen
         Navigator.pushReplacementNamed(context, AppRoutes.initial);
 

@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/data_cache_service.dart';
 import '../../services/session_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/skeleton_loader.dart';
 import './widgets/quick_stats_card_widget.dart';
 import './widgets/recent_session_card_widget.dart';
 import './widgets/streak_counter_widget.dart';
@@ -379,12 +380,103 @@ class _HomeDashboardTabState extends State<HomeDashboardTab>
   }
 
   Widget _buildLoadingState() {
-    return SizedBox(
-      height: 60.h,
-      child: Center(
-        child: CircularProgressIndicator(
-          color: Theme.of(context).colorScheme.primary,
-        ),
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Hero Section Skeleton
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(4.w),
+            child: const SkeletonStreakCounter(),
+          ),
+
+          SizedBox(height: 2.h),
+
+          // Start Button Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: SkeletonLoader(
+              width: double.infinity,
+              height: 6.h,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+
+          SizedBox(height: 3.h),
+
+          // Quick Stats Cards Skeleton
+          Container(
+            width: double.infinity,
+            height: 20.h,
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: Row(
+              children: [
+                const Expanded(child: SkeletonMetricCard()),
+                SizedBox(width: 4.w),
+                const Expanded(child: SkeletonMetricCard()),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 3.h),
+
+          // Chart Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: const SkeletonChart(),
+          ),
+
+          SizedBox(height: 3.h),
+
+          // Weather Widget Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: SkeletonLoader(
+              width: double.infinity,
+              height: 15.h,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+
+          SizedBox(height: 3.h),
+
+          // Recent Sessions Header Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SkeletonLoader(
+                  width: 35.w,
+                  height: 2.h,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                SkeletonLoader(
+                  width: 15.w,
+                  height: 2.h,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 2.h),
+
+          // Recent Sessions List Skeleton
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4.w),
+            child: Column(
+              children: List.generate(
+                3,
+                (index) => const SkeletonSessionCard(),
+              ),
+            ),
+          ),
+
+          SizedBox(height: 10.h),
+        ],
       ),
     );
   }

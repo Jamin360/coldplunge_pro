@@ -54,7 +54,7 @@ class _HomeDashboardState extends State<HomeDashboard>
     super.dispose();
   }
 
-  Future<void> _loadDashboardData() async {
+  Future<void> _loadDashboardData({bool forceRefresh = false}) async {
     if (!AuthService.instance.isAuthenticated) {
       Navigator.pushReplacementNamed(context, '/login');
       return;
@@ -65,6 +65,7 @@ class _HomeDashboardState extends State<HomeDashboard>
     try {
       final dashboardData = await _dashboardRepository.getDashboardData(
         key: 'main',
+        forceRefresh: forceRefresh,
         fetcher: () async {
           final results = await Future.wait([
             SessionService.instance.getRecentSessions(),
@@ -81,34 +82,39 @@ class _HomeDashboardState extends State<HomeDashboard>
         },
       );
 
-      setState(() {
-        _recentSessions = List<Map<String, dynamic>>.from(
-            dashboardData['recentSessions'] ?? []);
-        _weeklyData =
-            List<Map<String, dynamic>>.from(dashboardData['weeklyData'] ?? []);
-        _userStats =
-            Map<String, dynamic>.from(dashboardData['userStats'] ?? {});
-        _hasPlungedToday = dashboardData['hasPlungedToday'] ?? false;
-        _currentStreak = _userStats['streak_count'] ?? 0;
-      });
+      if (mounted) {
+        setState(() {
+          _recentSessions = List<Map<String, dynamic>>.from(
+              dashboardData['recentSessions'] ?? []);
+          _weeklyData = List<Map<String, dynamic>>.from(
+              dashboardData['weeklyData'] ?? []);
+          _userStats =
+              Map<String, dynamic>.from(dashboardData['userStats'] ?? {});
+          _hasPlungedToday = dashboardData['hasPlungedToday'] ?? false;
+          _currentStreak = _userStats['streak_count'] ?? 0;
+        });
+      }
     } catch (error) {
       print('Dashboard data load error: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load dashboard data'),
+            content: Text('Couldn\'t refresh. Showing cached data.'),
             backgroundColor: AppTheme.errorLight,
+            duration: Duration(seconds: 2),
           ),
         );
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _handleRefresh() async {
     HapticFeedback.lightImpact();
-    await _loadDashboardData();
+    await _loadDashboardData(forceRefresh: true);
   }
 
   void _startPlunge() {
